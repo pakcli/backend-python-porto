@@ -393,8 +393,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   if (!isOpen) return null;
 
   const content = (
-    <div className={`bg-[#12161b] border border-slate-800 rounded-xl w-full flex flex-col shadow-2xl overflow-hidden ${
-      isInline ? 'max-h-[calc(100vh-100px)]' : ''
+    <div className={`bg-[#12161b] border border-slate-800 rounded-xl w-full flex flex-col shadow-2xl overflow-hidden min-h-0 ${
+      isInline ? 'h-full max-h-full' : 'flex-1'
     }`}>
         
         {/* Step 1: Category Selector */}
@@ -614,7 +614,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
             })()}
 
             {/* Editor Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 max-h-[65vh]">
+            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 min-h-0">
               
               {/* Drag and Drop Zone */}
               <div
@@ -991,7 +991,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
         content
       ) : (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="max-w-2xl w-full">
+          <div className="max-w-2xl w-full max-h-[90vh] flex flex-col min-h-0">
             {content}
           </div>
         </div>

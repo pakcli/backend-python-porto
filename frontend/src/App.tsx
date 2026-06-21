@@ -367,6 +367,26 @@ export const App: React.FC = () => {
 
   const filteredEntries = getFilteredEntries();
 
+  const upcomingEntries = (() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const maxDate = new Date();
+    maxDate.setFullYear(year + 5);
+    const maxYear = maxDate.getFullYear();
+    const maxMonth = String(maxDate.getMonth() + 1).padStart(2, '0');
+    const maxDay = String(maxDate.getDate()).padStart(2, '0');
+    const maxDateStr = `${maxYear}-${maxMonth}-${maxDay}`;
+
+    return entries.filter((entry) => {
+      if (!entry.datestart) return false;
+      return entry.datestart >= todayStr && entry.datestart <= maxDateStr;
+    }).sort((a, b) => a.datestart.localeCompare(b.datestart));
+  })();
+
   // Compute stats on the items before applying the specific stat override
   const stats: DashboardStats = (() => {
     let quasDone = 0;
@@ -521,7 +541,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen font-dota flex flex-col transition-colors duration-200">
+    <div className="h-screen max-h-screen font-dota flex flex-col transition-colors duration-200 overflow-hidden bg-[#0b0d10]">
       {/* Floating Expand HUD Button when Sidebar is Collapsed */}
       {sidebarCollapsed && (
         <button
@@ -536,12 +556,12 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Content Layout - Full-screen layout */}
-      <main className={`flex-1 w-full px-6 py-6 flex flex-col gap-8 items-start ${
+      <main className={`flex-1 min-h-0 w-full px-6 py-6 flex flex-col lg:flex-row gap-8 items-stretch ${
         sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
       }`}>
-        {/* Interactive HUD Sidebar (exactly 350px width, left/right toggleable & collapsible) */}
+        {/* Interactive HUD Sidebar (exactly 240px width, left/right toggleable & collapsible) */}
         {!sidebarCollapsed && (
-          <aside className="w-full lg:w-[240px] lg:min-w-[240px] lg:max-w-[240px] lg:sticky lg:top-6 shrink-0 flex flex-col gap-5">
+          <aside className="w-full lg:w-[240px] lg:min-w-[240px] lg:max-w-[240px] shrink-0 flex flex-col gap-5 h-full overflow-y-auto pr-1 scrollbar-thin">
             {/* Logo Header */}
             <div className="flex items-center gap-3 pb-2 border-b border-slate-800/80">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg text-white font-black text-lg select-none">
@@ -602,55 +622,88 @@ export const App: React.FC = () => {
         )}
 
         {/* Right Side: Timeline Display (Fills the remaining main area) */}
-        <section className="flex-1 min-w-0 min-h-screen">
-          <div className="sticky top-0 bg-[#0b0d10]/95 backdrop-blur-md z-20 py-4 mb-4 border-b border-slate-900/60 flex items-center justify-between gap-4">
+        <section className="flex-1 min-w-0 h-full flex flex-col min-h-0">
+          <div className="bg-[#0b0d10]/95 border-b border-slate-900/60 py-4 mb-4 flex items-center justify-between gap-4 shrink-0">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <span>Archives Timeline Feed</span>
-                {activeCombo && (
+                <span>{isDreamingOpen && readViewMode === 'split' ? 'Dreaming Oracle: 5 Years Soon' : 'Archives Timeline Feed'}</span>
+                {activeCombo && !isDreamingOpen && (
                   <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
                     Active Filter: {getComboDisplayName(activeCombo)}
                   </span>
                 )}
               </h2>
               <span className="text-xs text-slate-500 font-semibold bg-slate-950 px-2 py-1 rounded border border-slate-800/80">
-                Showing {filteredEntries.length} entries
+                Showing {isDreamingOpen && readViewMode === 'split' ? upcomingEntries.length : filteredEntries.length} entries
               </span>
             </div>
             
-            <button
-              onClick={() => {
-                if (soundEnabled) sfx.playInvoke();
-                setIsDreamingOpen(true);
-              }}
-              className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
-            >
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
-              <span className="relative z-10 flex items-center gap-1.5 font-dota">
-                🔮 Dreaming (5 Years Soon)
-              </span>
-            </button>
+            {isDreamingOpen && readViewMode === 'split' ? (
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playTick();
+                  setIsDreamingOpen(false);
+                }}
+                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-200 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm font-dota uppercase tracking-wider shrink-0"
+              >
+                Close Vision
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playInvoke();
+                  setIsDreamingOpen(true);
+                }}
+                className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
+              >
+                <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
+                <span className="relative z-10 flex items-center gap-1.5 font-dota">
+                  🔮 Dreaming (5 Years Soon)
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Split view: timeline + detail panel side by side */}
-          <div className={`flex gap-4 ${readViewMode === 'split' && selectedEntry ? 'items-start' : ''}`}>
+          <div className="flex gap-4 min-h-0 flex-1 items-stretch">
             {/* Timeline (shrinks when split panel is open) */}
-            <div className={`transition-all duration-300 min-w-0 ${readViewMode === 'split' && selectedEntry ? 'w-1/2 flex-1' : 'flex-1'}`}>
-              <Timeline
-                entries={filteredEntries}
-                onOpenFolder={handleOpenFolder}
-                onMore={handleMoreClick}
-                thinnerCard={readViewMode === 'split' && !!selectedEntry ? true : thinnerCard}
-                checkedCards={checkedCards}
-                onToggleChecked={toggleCardChecked}
-                nodeLineMode={nodeLineMode}
-              />
+            <div className={`transition-all duration-300 min-w-0 h-full overflow-y-auto pr-1 scrollbar-thin ${readViewMode === 'split' && selectedEntry ? 'w-1/2 flex-1' : 'flex-1'}`}>
+              {isDreamingOpen && readViewMode === 'split' && upcomingEntries.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-emerald-900/30 rounded-xl bg-emerald-950/5 backdrop-blur-sm h-64 select-none">
+                  <span className="text-3xl mb-3">🔮</span>
+                  <p className="text-sm text-emerald-300 font-semibold font-dota">
+                    No future timeline entries in the next 5 years.
+                  </p>
+                  <p className="text-xs text-emerald-400/50 mt-1 max-w-xs font-sans">
+                    Click below to add a project or certification with a future start date.
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (soundEnabled) sfx.playTick();
+                      setIsAddPopupOpen(true);
+                    }}
+                    className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/30 hover:border-emerald-500/50 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+                  >
+                    + Add Upcoming Dream
+                  </button>
+                </div>
+              ) : (
+                <Timeline
+                  entries={isDreamingOpen && readViewMode === 'split' ? upcomingEntries : filteredEntries}
+                  onOpenFolder={handleOpenFolder}
+                  onMore={handleMoreClick}
+                  thinnerCard={readViewMode === 'split' && !!selectedEntry ? true : thinnerCard}
+                  checkedCards={checkedCards}
+                  onToggleChecked={toggleCardChecked}
+                  nodeLineMode={nodeLineMode}
+                />
+              )}
             </div>
 
             {/* Split view detail panel */}
             {readViewMode === 'split' && selectedEntry && (
               isEditingInline ? (
-                <div className="w-1/2 flex-1 min-w-0 lg:sticky lg:top-6 self-start animate-fadeIn">
+                <div className="w-1/2 flex-1 min-w-0 h-full flex flex-col min-h-0 animate-fadeIn">
                   <AddInstanceModal
                     isOpen={true}
                     onClose={() => {
@@ -676,8 +729,8 @@ export const App: React.FC = () => {
                 const depIds = selectedEntry.dependencies || [];
                 const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
                 return (
-                  <div className="w-1/2 flex-1 min-w-0 lg:sticky lg:top-6 self-start">
-                    <div className="bg-[#12161b] border border-slate-800 rounded-xl flex flex-col shadow-2xl overflow-hidden max-h-[calc(100vh-100px)]">
+                  <div className="w-1/2 flex-1 min-w-0 h-full flex flex-col min-h-0">
+                    <div className="bg-[#12161b] border border-slate-800 rounded-xl flex flex-col shadow-2xl overflow-hidden h-full">
                       {/* Split Panel Header */}
                       <div className="p-4 border-b border-slate-800 bg-[#15191e] flex items-start justify-between gap-3 shrink-0">
                         <div className="min-w-0">
@@ -1201,7 +1254,7 @@ export const App: React.FC = () => {
       />
 
       {/* Dreaming Modal Popup */}
-      {isDreamingOpen && (
+      {isDreamingOpen && readViewMode === 'popup' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           {/* Static cosmic dream background glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_65%)] pointer-events-none" />
