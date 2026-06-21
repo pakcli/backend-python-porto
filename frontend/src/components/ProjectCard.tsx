@@ -32,30 +32,37 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   return (
-    <div className={`bg-[#12161b]/95 border border-slate-800/80 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
-      thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
-    }`}>
+    <div 
+      onClick={() => onMore(entry)}
+      className={`bg-[#12161b]/95 border border-slate-800/80 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
+        thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
+      }`}
+    >
       <div className="flex-1 flex flex-col min-h-0">
-        <div className={`flex gap-3 items-start shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
-          {/* 3-Circle Orb Combo Icon */}
+        <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
+          {/* Category Label Badge (far left) */}
+          <span className="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap shrink-0">
+            PROJECT
+          </span>
+          
+          {/* Center Details Block (title only, bigger) */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-black dark:text-slate-100 text-slate-800 transition-colors line-clamp-1">
+              {entry.title}
+            </h3>
+          </div>
+
+          {/* 3-Circle Orb Combo Icon (far right) */}
           <div className="w-8 h-7 relative shrink-0">
             <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
             <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
             <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color3, boxShadow: `0 0 8px ${color3}` }} />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-start gap-2">
-              <h3 className="text-md font-bold dark:text-slate-100 text-slate-800 transition-colors line-clamp-1">
-                {entry.title}
-              </h3>
-              <span className="text-[9px] tracking-wider font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap">
-                PROJECT
-              </span>
-            </div>
-            <div className="text-[10px] dark:text-slate-400 text-slate-500">
-              {entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}
-            </div>
-          </div>
+        </div>
+
+        {/* Date block: moved above thumbnail, aligned left */}
+        <div className={`text-[10px] font-semibold dark:text-slate-400 text-slate-500 ${thinnerCard ? 'mb-1' : 'mb-2.5'}`}>
+          {entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}
         </div>
 
         {entry.imgPath ? (
@@ -88,7 +95,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
         thinnerCard ? 'pt-1.5' : 'pt-2'
       }`}>
         <button 
-          onClick={() => onMore(entry)} 
+          onClick={(e) => { e.stopPropagation(); onMore(entry); }} 
           className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
             thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
           }`}
@@ -97,7 +104,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
           <span>More</span>
         </button>
         <button 
-          onClick={() => onOpenFolder(entry.folderPath)} 
+          onClick={(e) => { e.stopPropagation(); onOpenFolder(entry.folderPath); }} 
           className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
             thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
           }`}
@@ -110,6 +117,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
             href={entry.github} 
             target="_blank" 
             rel="noopener noreferrer" 
+            onClick={(e) => e.stopPropagation()}
             className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
               thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
             }`}
