@@ -18,6 +18,10 @@ interface HUDProps {
   setVolume: (vol: number) => void;
   activeStatFilter: string | null;
   setActiveStatFilter: (filter: string | null) => void;
+  formalMode: boolean;
+  setFormalMode: (formal: boolean) => void;
+  thinnerCard: boolean;
+  setThinnerCard: (thinner: boolean) => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -36,6 +40,10 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setVolume,
   activeStatFilter,
   setActiveStatFilter,
+  formalMode,
+  setFormalMode,
+  thinnerCard,
+  setThinnerCard,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
 
@@ -63,9 +71,9 @@ export const InvokerHUD: React.FC<HUDProps> = ({
 
   const getOrbLabel = (orb: OrbType) => {
     switch (orb) {
-      case 'Q': return 'Quas';
-      case 'W': return 'Wex';
-      case 'E': return 'Exort';
+      case 'Q': return formalMode ? 'Sistem' : 'Quas';
+      case 'W': return formalMode ? 'Program' : 'Wex';
+      case 'E': return formalMode ? 'Media / Visual' : 'Exort';
     }
   };
 
@@ -84,7 +92,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   return (
     <div className="bg-[#111418] border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col gap-5 select-none">
       {/* 1. Title Header (without volume) */}
-      <div className="flex justify-between items-center pb-3 border-b dark:border-slate-800 border-slate-200">
+      <div className="flex justify-between items-center pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Sparkles className="text-emerald-500 animate-spin" style={{ animationDuration: '6s' }} size={20} />
           <h2 className="text-xs font-black tracking-wide text-slate-200 flex items-center gap-1.5 font-dota whitespace-nowrap">
@@ -95,17 +103,17 @@ export const InvokerHUD: React.FC<HUDProps> = ({
 
       {/* 1b. Mode Selector */}
       <div>
-        <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 whitespace-nowrap">
+        <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2 whitespace-nowrap">
           Mode Selector
         </label>
-        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           {(['all', 'proj', 'items'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
               className={`py-1.5 text-xs font-bold rounded-md capitalize transition-all ${mode === m
-                ? 'bg-white dark:bg-slate-800 text-blue-500 dark:text-quas shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-400 hover:text-slate-200'
                 }`}
             >
               {m === 'proj' ? 'Proj' : m}
@@ -117,19 +125,19 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       {/* Sub Checkboxes (Items Mode only) */}
       {mode === 'items' && (
         <div className="animate-fadeIn">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 whitespace-nowrap">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2 whitespace-nowrap">
             Active Item Filters
           </label>
-          <div className="flex flex-col gap-2 p-3 dark:bg-slate-900/60 bg-slate-50 border dark:border-slate-800 border-slate-200 rounded-lg">
+          <div className="flex flex-col gap-2 p-3 bg-slate-950/40 border border-slate-800 rounded-lg">
             {(['cert', 'achv', 'item'] as const).map((key) => {
               const labelMap = { cert: 'Certifications', achv: 'Achievements', item: 'Hardware Items' };
               return (
-                <label key={key} className="flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
+                <label key={key} className="flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-400 hover:text-slate-200">
                   <input
                     type="checkbox"
                     checked={subFilters[key]}
                     onChange={() => handleSubFilterToggle(key)}
-                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
+                    className="w-3.5 h-3.5 rounded border-slate-700 text-cyan-500 focus:ring-cyan-500/20 bg-slate-900"
                   />
                   <span>{labelMap[key]}</span>
                 </label>
@@ -141,105 +149,105 @@ export const InvokerHUD: React.FC<HUDProps> = ({
 
       {/* 2. Dashboard Statistics (Interactive/Toggleable) */}
       <div>
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap">
+        <div className="flex justify-between items-center mb-2 h-5">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
             HUD Statistics
           </label>
-          {activeStatFilter && (
-            <button
-              onClick={() => setActiveStatFilter(null)}
-              className="text-[8px] text-red-500 hover:underline font-bold whitespace-nowrap"
-            >
-              Clear Filter
-            </button>
-          )}
+          <button
+            onClick={() => setActiveStatFilter(null)}
+            className={`text-[8px] text-red-500 hover:underline font-bold whitespace-nowrap transition-all duration-200 ${
+              activeStatFilter ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'
+            }`}
+          >
+            Clear Filter
+          </button>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
           <div
             onClick={() => handleStatClick('total')}
-            className={`p-2.5 rounded-lg flex flex-col border transition-all cursor-pointer ${activeStatFilter === 'total'
-              ? 'dark:bg-slate-800 bg-slate-150 border-blue-500 shadow-md ring-1 ring-blue-500/10'
-              : 'dark:bg-slate-900 bg-slate-50 dark:border-slate-800 border-slate-200 hover:border-slate-400 dark:hover:border-slate-700'
+            className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'total'
+              ? 'bg-[#1e252f] border-blue-500 shadow-md ring-1 ring-blue-500/10'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
               }`}
           >
-            <span className="text-[10px] text-slate-400 font-medium">Total Cards</span>
-            <span className="text-lg font-black dark:text-white text-slate-800">{stats.total}</span>
+            <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Total Cards</span>
+            <span className="text-lg font-black text-white">{stats.total}</span>
           </div>
 
           <div
             onClick={() => handleStatClick('quas')}
-            className={`p-2.5 rounded-lg flex flex-col border transition-all cursor-pointer ${activeStatFilter === 'quas'
-              ? 'dark:bg-slate-800 bg-slate-150 border-cyan-500 shadow-[0_0_10px_rgba(0,208,255,0.25)] ring-1 ring-cyan-500/20'
-              : 'dark:bg-slate-900 bg-slate-50 dark:border-slate-800 border-slate-200 hover:border-slate-400 dark:hover:border-slate-700'
+            className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'quas'
+              ? 'bg-[#1e252f] border-cyan-500 shadow-[0_0_10px_rgba(0,208,255,0.25)] ring-1 ring-cyan-500/20'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
               }`}
           >
-            <span className="text-[10px] text-cyan-500 dark:text-cyan-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block animate-pulse" />
-              Quas (Q)
+            <span className="text-[10px] text-cyan-400 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block animate-pulse shrink-0" />
+              {formalMode ? 'Sistem' : 'Quas (Q)'}
             </span>
-            <span className="text-lg font-black dark:text-white text-slate-800">{stats.quas}</span>
+            <span className="text-lg font-black text-white">{stats.quas}</span>
           </div>
 
           <div
             onClick={() => handleStatClick('wex')}
-            className={`p-2.5 rounded-lg flex flex-col border transition-all cursor-pointer ${activeStatFilter === 'wex'
-              ? 'dark:bg-slate-800 bg-slate-150 border-fuchsia-500 shadow-[0_0_10px_rgba(208,0,255,0.25)] ring-1 ring-fuchsia-500/20'
-              : 'dark:bg-slate-900 bg-slate-50 dark:border-slate-800 border-slate-200 hover:border-slate-400 dark:hover:border-slate-700'
+            className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'wex'
+              ? 'bg-[#1e252f] border-fuchsia-500 shadow-[0_0_10px_rgba(208,0,255,0.25)] ring-1 ring-fuchsia-500/20'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
               }`}
           >
-            <span className="text-[10px] text-fuchsia-500 dark:text-fuchsia-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 inline-block animate-pulse" />
-              Wex (W)
+            <span className="text-[10px] text-fuchsia-400 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 inline-block animate-pulse shrink-0" />
+              {formalMode ? 'Program' : 'Wex (W)'}
             </span>
-            <span className="text-lg font-black dark:text-white text-slate-800">{stats.wex}</span>
+            <span className="text-lg font-black text-white">{stats.wex}</span>
           </div>
 
           <div
             onClick={() => handleStatClick('exort')}
-            className={`p-2.5 rounded-lg flex flex-col border transition-all cursor-pointer ${activeStatFilter === 'exort'
-              ? 'dark:bg-slate-800 bg-slate-150 border-orange-500 shadow-[0_0_10px_rgba(255,106,0,0.25)] ring-1 ring-orange-500/20'
-              : 'dark:bg-slate-900 bg-slate-50 dark:border-slate-800 border-slate-200 hover:border-slate-400 dark:hover:border-slate-700'
+            className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'exort'
+              ? 'bg-[#1e252f] border-orange-500 shadow-[0_0_10px_rgba(255,106,0,0.25)] ring-1 ring-orange-500/20'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
               }`}
           >
-            <span className="text-[10px] text-orange-500 dark:text-orange-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block animate-pulse" />
-              Exort (E)
+            <span className="text-[10px] text-orange-400 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block animate-pulse shrink-0" />
+              {formalMode ? 'Media / Visual' : 'Exort (E)'}
             </span>
-            <span className="text-lg font-black dark:text-white text-slate-800">{stats.exort}</span>
+            <span className="text-lg font-black text-white">{stats.exort}</span>
           </div>
 
           <div
             onClick={() => handleStatClick('gold')}
-            className={`p-2.5 rounded-lg flex flex-col border transition-all cursor-pointer ${activeStatFilter === 'gold'
-              ? 'dark:bg-slate-800 bg-slate-150 border-amber-400 shadow-[0_0_10px_rgba(255,215,0,0.25)] ring-1 ring-amber-400/20'
-              : 'dark:bg-slate-900 bg-slate-50 dark:border-slate-800 border-slate-200 hover:border-slate-400 dark:hover:border-slate-700'
+            className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'gold'
+              ? 'bg-[#1e252f] border-amber-400 shadow-[0_0_10px_rgba(255,215,0,0.25)] ring-1 ring-amber-400/20'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
               }`}
           >
-            <span className="text-[10px] text-amber-600 dark:text-gold font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block animate-pulse" />
+            <span className="text-[10px] text-amber-500 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block animate-pulse shrink-0" />
               Gold (Achv)
             </span>
-            <span className="text-lg font-black dark:text-white text-slate-800">{stats.gold}</span>
+            <span className="text-lg font-black text-white">{stats.gold}</span>
           </div>
 
           <div
             onClick={() => handleStatClick('grey')}
-            className={`p-2.5 rounded-lg flex flex-col border transition-all cursor-pointer ${activeStatFilter === 'grey'
-              ? 'dark:bg-slate-800 bg-slate-150 border-slate-500 shadow-md ring-1 ring-slate-500/10'
-              : 'dark:bg-slate-900 bg-slate-50 dark:border-slate-800 border-slate-200 hover:border-slate-400 dark:hover:border-slate-700'
+            className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'grey'
+              ? 'bg-[#1e252f] border-slate-500 shadow-md ring-1 ring-slate-500/10'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
               }`}
           >
-            <span className="text-[10px] text-slate-400 font-medium">Item</span>
-            <span className="text-lg font-black dark:text-white text-slate-800">{stats.grey}</span>
+            <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Item</span>
+            <span className="text-lg font-black text-white">{stats.grey}</span>
           </div>
         </div>
       </div>
 
       {/* 3. Keybind Legend (Expandable) */}
-      <div className="p-3 dark:bg-slate-900 bg-slate-50 border dark:border-slate-800 border-slate-200 rounded-lg">
+      <div className="p-3 bg-slate-950/40 border border-slate-800/80 rounded-lg">
         <button
           onClick={() => setKeybindsExpanded(!keybindsExpanded)}
-          className="w-full flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-bold focus:outline-none"
+          className="w-full flex items-center justify-between text-[10px] text-slate-400 font-bold focus:outline-none"
         >
           <div className="flex items-center gap-1.5">
             <HelpCircle size={14} />
@@ -249,26 +257,26 @@ export const InvokerHUD: React.FC<HUDProps> = ({
         </button>
 
         {keybindsExpanded && (
-          <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-2 animate-fadeIn">
-            <div className="flex justify-between border-b dark:border-slate-800 border-slate-100 pb-1">
-              <span>Q: Quas</span>
-              <kbd className="px-1.5 dark:bg-slate-800 bg-slate-200 rounded text-[9px]">Q</kbd>
+          <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-400 font-medium mt-2 animate-fadeIn">
+            <div className="flex justify-between border-b border-slate-800 pb-1">
+              <span>Q: {formalMode ? 'Sistem' : 'Quas'}</span>
+              <kbd className="px-1.5 bg-slate-800 rounded text-[9px]">Q</kbd>
             </div>
-            <div className="flex justify-between border-b dark:border-slate-800 border-slate-100 pb-1">
-              <span>W: Wex</span>
-              <kbd className="px-1.5 dark:bg-slate-800 bg-slate-200 rounded text-[9px]">W</kbd>
+            <div className="flex justify-between border-b border-slate-800 pb-1">
+              <span>W: {formalMode ? 'Program' : 'Wex'}</span>
+              <kbd className="px-1.5 bg-slate-800 rounded text-[9px]">W</kbd>
             </div>
-            <div className="flex justify-between border-b dark:border-slate-800 border-slate-100 pb-1">
-              <span>E: Exort</span>
-              <kbd className="px-1.5 dark:bg-slate-800 bg-slate-200 rounded text-[9px]">E</kbd>
+            <div className="flex justify-between border-b border-slate-800 pb-1">
+              <span>E: {formalMode ? 'Media / Visual' : 'Exort'}</span>
+              <kbd className="px-1.5 bg-slate-800 rounded text-[9px]">E</kbd>
             </div>
-            <div className="flex justify-between border-b dark:border-slate-800 border-slate-100 pb-1">
+            <div className="flex justify-between border-b border-slate-800 pb-1">
               <span>R: Invoke</span>
-              <kbd className="px-1.5 dark:bg-slate-800 bg-slate-200 rounded text-[9px]">R</kbd>
+              <kbd className="px-1.5 bg-slate-800 rounded text-[9px]">R</kbd>
             </div>
             <div className="flex justify-between col-span-2 pt-0.5">
               <span>Space: Clear Queue</span>
-              <kbd className="px-1.5 dark:bg-slate-800 bg-slate-200 rounded text-[9px]">Space</kbd>
+              <kbd className="px-1.5 bg-slate-800 rounded text-[9px]">Space</kbd>
             </div>
           </div>
         )}
@@ -276,17 +284,17 @@ export const InvokerHUD: React.FC<HUDProps> = ({
 
       {/* 4. Invoker - Active Orbs Queue & Buttons */}
       <div>
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap">
+        <div className="flex justify-between items-center mb-2 h-5">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
             Active Orbs
           </label>
-          {activeCombo && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider whitespace-nowrap">
-              Combo: {activeCombo}
-            </span>
-          )}
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider whitespace-nowrap transition-all duration-200 ${
+            activeCombo ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+          }`}>
+            Combo: {activeCombo || 'none'}
+          </span>
         </div>
-        <div className="flex justify-center gap-3 p-3 dark:bg-slate-900 bg-slate-100 rounded-lg min-h-[64px] items-center border dark:border-slate-800 border-slate-200">
+        <div className="flex justify-center gap-3 p-3 bg-slate-950/40 rounded-lg min-h-[64px] items-center border border-slate-800">
           {[0, 1, 2].map((idx) => {
             const orb = orbs[idx];
             return (
@@ -294,7 +302,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
                 key={idx}
                 className={`w-11 h-11 rounded-full flex flex-col items-center justify-center transition-all duration-300 relative overflow-hidden ${orb
                   ? getOrbShadowAndBorder(orb)
-                  : 'border-2 border-dashed dark:border-slate-700 border-slate-300 text-slate-400 dark:text-slate-600'
+                  : 'border-2 border-dashed border-slate-800 text-slate-600'
                   }`}
               >
                 {orb ? (
@@ -305,7 +313,9 @@ export const InvokerHUD: React.FC<HUDProps> = ({
                     />
                     <div className="relative z-10 flex flex-col items-center justify-center text-white select-none">
                       <span className="text-xs font-black leading-none">{orb}</span>
-                      <span className="text-[7px] font-medium tracking-tight mt-0.5 opacity-90">
+                      <span className={`font-medium tracking-tight mt-0.5 opacity-90 leading-none ${
+                        formalMode && orb === 'E' ? 'text-[5.5px]' : 'text-[7px]'
+                      }`}>
                         {getOrbLabel(orb)}
                       </span>
                     </div>
@@ -323,7 +333,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="flex gap-2">
         <button
           onClick={onClear}
-          className="flex-1 py-2 text-xs font-bold rounded-lg border dark:border-slate-800 border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 dark:text-slate-400 text-slate-600 transition-colors"
+          className="flex-1 py-2 text-xs font-bold rounded-lg border border-slate-800 hover:bg-[#1a1f26] text-slate-400 transition-colors"
         >
           CLEAR (Space)
         </button>
@@ -332,7 +342,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
           disabled={orbs.length < 3}
           className={`flex-1 py-2 text-xs font-bold rounded-lg text-white transition-all shadow-md ${orbs.length === 3
             ? 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_15px_rgba(74,222,128,0.4)] invoke-btn-glow'
-            : 'bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border dark:border-slate-800 border-slate-200'
+            : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800'
             }`}
         >
           INVOKE (R)
@@ -340,15 +350,15 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       </div>
 
       {/* Volume Slider (at the bottom) */}
-      <div className="pt-3 border-t dark:border-slate-800 border-slate-200 flex flex-col gap-1.5">
-        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span className="whitespace-nowrap">Master Volume</span>
-          <span className="text-[10px] dark:text-slate-400 text-slate-500 font-bold">{Math.round(volume * 100)}%</span>
+          <span className="text-[10px] text-slate-400 font-bold">{Math.round(volume * 100)}%</span>
         </div>
-        <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border dark:border-slate-800/85 border-slate-200">
+        <div className="flex items-center gap-2.5 bg-slate-950/40 p-2 rounded-lg border border-slate-800">
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1 dark:hover:bg-slate-850 hover:bg-slate-200 rounded transition-colors text-slate-500 dark:text-slate-400"
+            className="p-1 hover:bg-[#1a1f26] rounded transition-colors text-slate-400"
             title="Toggle SFX"
           >
             {soundEnabled && volume > 0 ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -366,8 +376,68 @@ export const InvokerHUD: React.FC<HUDProps> = ({
                 setSoundEnabled(true);
               }
             }}
-            className="flex-1 h-1 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-slate-200 dark:bg-slate-800"
+            className="flex-1 h-1 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-slate-800"
           />
+        </div>
+      </div>
+
+      {/* Theme/Mode Switcher */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>HUD Mode</span>
+          <span className="text-slate-400 font-bold capitalize">{formalMode ? 'Formal' : 'Dota 2'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setFormalMode(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              formalMode
+                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Formal
+          </button>
+          <button
+            onClick={() => setFormalMode(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !formalMode
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Dota 2
+          </button>
+        </div>
+      </div>
+
+      {/* Thinner Card Switcher */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Thinner Card Mode</span>
+          <span className="text-slate-400 font-bold capitalize">{thinnerCard ? 'Thinner (4:1)' : 'Standard (4:3)'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setThinnerCard(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !thinnerCard
+                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Standard
+          </button>
+          <button
+            onClick={() => setThinnerCard(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              thinnerCard
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Thinner
+          </button>
         </div>
       </div>
     </div>

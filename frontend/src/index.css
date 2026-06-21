@@ -53,16 +53,6 @@ body.light ::-webkit-scrollbar-thumb:hover {
   }
 }
 
-@keyframes gold-glow-pulse {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.35), inset 0 0 8px rgba(255, 215, 0, 0.25);
-    border-color: rgba(255, 215, 0, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 35px rgba(255, 215, 0, 0.85), inset 0 0 18px rgba(255, 215, 0, 0.55);
-    border-color: rgba(255, 215, 0, 1);
-  }
-}
 
 @keyframes invoke-glow-pulse {
   0%, 100% {
@@ -78,7 +68,13 @@ body.light ::-webkit-scrollbar-thumb:hover {
 }
 
 .achievement-card-glow {
-  animation: gold-glow-pulse 4s ease-in-out infinite;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.55), inset 0 0 0 2.5px rgba(255, 215, 0, 0.8), inset 0 0 6px rgba(255, 215, 0, 0.2) !important;
+  border-color: rgba(255, 215, 0, 0.8) !important;
+}
+
+.achievement-card-glow:hover {
+  box-shadow: 0 0 35px rgba(255, 215, 0, 0.85), inset 0 0 0 3.5px rgba(255, 215, 0, 0.95), inset 0 0 8px rgba(255, 215, 0, 0.3) !important;
+  border-color: rgba(255, 215, 0, 1) !important;
 }
 
 .invoke-btn-glow {

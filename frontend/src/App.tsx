@@ -10,16 +10,72 @@ import sfx from './lib/sfx';
 export const App: React.FC = () => {
   const [entries, setEntries] = useState<PortfolioEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sidebarPosition, setSidebarPosition] = useState<'left' | 'right'>('left');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mode, setMode] = useState<'all' | 'proj' | 'items'>('all');
-  const [subFilters, setSubFilters] = useState({ cert: true, achv: true, item: true });
-  const [orbs, setOrbs] = useState<OrbType[]>([]);
-  const [activeCombo, setActiveCombo] = useState('');
+  const [sidebarPosition, setSidebarPosition] = useState<'left' | 'right'>(() => {
+    return (localStorage.getItem('sidebarPosition') as 'left' | 'right') || 'left';
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
+  const [mode, setMode] = useState<'all' | 'proj' | 'items'>(() => {
+    return (localStorage.getItem('mode') as 'all' | 'proj' | 'items') || 'all';
+  });
+  const [subFilters, setSubFilters] = useState<{ cert: boolean; achv: boolean; item: boolean }>(() => {
+    try {
+      const saved = localStorage.getItem('subFilters');
+      return saved ? JSON.parse(saved) : { cert: true, achv: true, item: true };
+    } catch (e) {
+      return { cert: true, achv: true, item: true };
+    }
+  });
+  const [orbs, setOrbs] = useState<OrbType[]>(() => {
+    try {
+      const saved = localStorage.getItem('orbs');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [activeCombo, setActiveCombo] = useState(() => {
+    return localStorage.getItem('activeCombo') || '';
+  });
   const [selectedEntry, setSelectedEntry] = useState<PortfolioEntry | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [volume, setVolume] = useState(0.5);
-  const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('soundEnabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [volume, setVolume] = useState<number>(() => {
+    const saved = localStorage.getItem('volume');
+    return saved !== null ? parseFloat(saved) : 0.5;
+  });
+  const [activeStatFilter, setActiveStatFilter] = useState<string | null>(() => {
+    return localStorage.getItem('activeStatFilter') || null;
+  });
+  const [formalMode, setFormalMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('formalMode');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [thinnerCard, setThinnerCard] = useState<boolean>(() => {
+    return localStorage.getItem('thinnerCard') === 'true';
+  });
+
+  // Save settings and preferences to localStorage on change
+  useEffect(() => {
+    localStorage.setItem('sidebarPosition', sidebarPosition);
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+    localStorage.setItem('mode', mode);
+    localStorage.setItem('subFilters', JSON.stringify(subFilters));
+    localStorage.setItem('orbs', JSON.stringify(orbs));
+    localStorage.setItem('activeCombo', activeCombo);
+    localStorage.setItem('soundEnabled', String(soundEnabled));
+    localStorage.setItem('volume', String(volume));
+    localStorage.setItem('formalMode', String(formalMode));
+    localStorage.setItem('thinnerCard', String(thinnerCard));
+    if (activeStatFilter === null) {
+      localStorage.removeItem('activeStatFilter');
+    } else {
+      localStorage.setItem('activeStatFilter', activeStatFilter);
+    }
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -183,7 +239,9 @@ export const App: React.FC = () => {
 
       // 2. Filter by Invoked Combo
       if (activeCombo) {
-        if (entry.skill !== activeCombo) {
+        const sortedEntrySkill = (entry.skill || '').split('').sort().join('');
+        const sortedActiveCombo = activeCombo.split('').sort().join('');
+        if (sortedEntrySkill !== sortedActiveCombo) {
           return false;
         }
       }
@@ -259,6 +317,18 @@ export const App: React.FC = () => {
     };
   })();
 
+  const getComboDisplayName = (combo: string) => {
+    if (!combo) return '';
+    if (!formalMode) return `Combo ${combo.toUpperCase()}`;
+    const names = combo.toLowerCase().split('').map(char => {
+      if (char === 'q') return 'Sistem';
+      if (char === 'w') return 'Program';
+      if (char === 'e') return 'Media / Visual';
+      return char;
+    });
+    return `Combo ${names.join(' + ')}`;
+  };
+
   const handleMoreClick = (entry: PortfolioEntry) => {
     if (soundEnabled) sfx.playTick();
     setSelectedEntry(entry);
@@ -317,23 +387,27 @@ export const App: React.FC = () => {
             />
 
             {/* Interactive HUD */}
-            <InvokerHUD
-              mode={mode}
-              setMode={setMode}
-              subFilters={subFilters}
-              setSubFilters={setSubFilters}
-              orbs={orbs}
-              onClear={clearOrbs}
-              onInvoke={invokeCombo}
-              activeCombo={activeCombo}
-              stats={stats}
-              soundEnabled={soundEnabled}
-              setSoundEnabled={setSoundEnabled}
-              volume={volume}
-              setVolume={setVolume}
-              activeStatFilter={activeStatFilter}
-              setActiveStatFilter={setActiveStatFilter}
-            />
+              <InvokerHUD
+               mode={mode}
+               setMode={setMode}
+               subFilters={subFilters}
+               setSubFilters={setSubFilters}
+               orbs={orbs}
+               onClear={clearOrbs}
+               onInvoke={invokeCombo}
+               activeCombo={activeCombo}
+               stats={stats}
+               soundEnabled={soundEnabled}
+               setSoundEnabled={setSoundEnabled}
+               volume={volume}
+               setVolume={setVolume}
+               activeStatFilter={activeStatFilter}
+               setActiveStatFilter={setActiveStatFilter}
+               formalMode={formalMode}
+               setFormalMode={setFormalMode}
+               thinnerCard={thinnerCard}
+               setThinnerCard={setThinnerCard}
+             />
           </aside>
         )}
 
@@ -343,8 +417,8 @@ export const App: React.FC = () => {
             <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <span>Archives Timeline Feed</span>
               {activeCombo && (
-                <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
-                  Active Filter: Combo {activeCombo}
+                <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold animate-fadeIn">
+                  Active Filter: {getComboDisplayName(activeCombo)}
                 </span>
               )}
             </h2>
@@ -357,6 +431,7 @@ export const App: React.FC = () => {
             entries={filteredEntries}
             onOpenFolder={handleOpenFolder}
             onMore={handleMoreClick}
+            thinnerCard={thinnerCard}
           />
         </section>
       </main>
@@ -364,32 +439,32 @@ export const App: React.FC = () => {
       {/* Details Markdown Modal */}
       {selectedEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="dark:bg-[#12161b] bg-white border-2 dark:border-slate-800 border-slate-200 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden scale-in">
+          <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden scale-in">
             {/* Modal Header */}
-            <div className="p-4 border-b dark:border-slate-800 border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#15191e]">
               <div>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded dark:bg-slate-800 bg-slate-200 text-slate-600 dark:text-slate-400 border dark:border-slate-700 border-slate-300 uppercase tracking-wider mr-2">
+                <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider mr-2">
                   {selectedEntry.source}
                 </span>
-                <span className="text-xs dark:text-slate-400 text-slate-500 font-semibold">
+                <span className="text-xs text-slate-400 font-semibold">
                   {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
                 </span>
-                <h2 className="text-lg font-black dark:text-slate-100 text-slate-800 mt-1">
+                <h2 className="text-lg font-black text-slate-100 mt-1">
                   {selectedEntry.title}
                 </h2>
               </div>
               <button
                 onClick={handleCloseModal}
-                className="p-1 rounded-lg dark:hover:bg-slate-800 hover:bg-slate-200 text-slate-400 dark:text-slate-500 dark:hover:text-slate-200 transition-colors"
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Modal Body / Markdown Content */}
-            <div className="flex-1 overflow-y-auto p-6 prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
+            <div className="flex-1 overflow-y-auto p-6 prose prose-invert max-w-none text-slate-300">
               {selectedEntry.imgPath && (
-                <div className="w-full h-48 rounded-lg overflow-hidden border dark:border-slate-800 border-slate-200 mb-6 bg-slate-900/50">
+                <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-800 mb-6 bg-slate-900/50">
                   <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
                 </div>
               )}
@@ -407,7 +482,7 @@ export const App: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t dark:border-slate-800 border-slate-200 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900/50">
+            <div className="p-4 border-t border-slate-800 flex justify-end gap-2 bg-[#15191e]">
               <button
                 onClick={() => handleOpenFolder(selectedEntry.folderPath)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
@@ -420,7 +495,7 @@ export const App: React.FC = () => {
                   href={selectedEntry.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-2 dark:bg-slate-800 bg-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors border dark:border-transparent border-slate-300"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors border border-transparent"
                 >
                   <Github size={14} />
                   <span>View GitHub</span>
@@ -428,7 +503,7 @@ export const App: React.FC = () => {
               )}
               <button
                 onClick={handleCloseModal}
-                className="px-4 py-2 dark:bg-slate-900 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 border dark:border-slate-800 border-slate-200 rounded-lg text-xs font-bold transition-colors text-slate-600 dark:text-slate-400"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
               >
                 Close
               </button>

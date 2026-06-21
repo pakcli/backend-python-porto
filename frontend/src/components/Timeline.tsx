@@ -10,6 +10,7 @@ interface TimelineProps {
   entries: PortfolioEntry[];
   onOpenFolder: (path: string) => void;
   onMore: (entry: PortfolioEntry) => void;
+  thinnerCard?: boolean;
 }
 
 const getMonthYearLabel = (dateStr: string) => {
@@ -29,7 +30,7 @@ const getMonthYearLabel = (dateStr: string) => {
   return dateStr;
 };
 
-export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMore }) => {
+export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMore, thinnerCard }) => {
   if (entries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed dark:border-slate-800 border-slate-200 rounded-xl bg-slate-500/5 backdrop-blur-sm animate-fadeIn">
@@ -69,13 +70,13 @@ export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMor
   const renderCard = (entry: PortfolioEntry) => {
     switch (entry.source) {
       case 'proj':
-        return <ProjectCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} />;
+        return <ProjectCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
       case 'cert':
-        return <CertCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} />;
+        return <CertCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
       case 'item':
-        return <ItemCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} />;
+        return <ItemCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
       case 'achv':
-        return <AchievementCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} />;
+        return <AchievementCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
       default:
         return null;
     }
