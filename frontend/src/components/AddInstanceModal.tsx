@@ -261,6 +261,39 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     }
   };
 
+  const handleDelete = async () => {
+    if (!isEditMode || !editEntry) return;
+
+    const confirmMsg = `Are you sure you want to permanently delete this instance ("${title}")? This will delete the entire directory and all attachments.`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    // Get folderName from folderPath (last portion of path)
+    const parts = editEntry.folderPath.replace(/\\/g, '/').split('/');
+    const folder = parts[parts.length - 1] || '';
+
+    const formData = new FormData();
+    formData.append('category', category);
+    formData.append('folderName', folder);
+
+    try {
+      const res = await fetch('/api/entries/delete', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        handleClose();
+      } else {
+        alert(`Error: ${result.error || 'Failed to delete instance'}`);
+      }
+    } catch (err) {
+      alert(`Network error: ${err}`);
+    }
+  };
+
+
   if (!isOpen) return null;
 
   return (
@@ -625,19 +658,31 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2 bg-[#15191e] shrink-0">
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
-              >
-                Save Instance
-              </button>
+            <div className="p-4 border-t border-slate-800 flex justify-between items-center bg-[#15191e] shrink-0">
+              <div>
+                {isEditMode && (
+                  <button
+                    onClick={handleDelete}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                  >
+                    Delete Instance
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleClose}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                >
+                  Save Instance
+                </button>
+              </div>
             </div>
           </>
         )}

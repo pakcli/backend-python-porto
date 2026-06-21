@@ -277,6 +277,47 @@ def create_entry():
 
     return jsonify({"success": True})
 
+@app.route('/api/entries/delete', methods=['POST'])
+def delete_entry():
+    import shutil
+    import re
+    category = request.form.get('category')
+    folder_name = request.form.get('folderName')
+
+    if not category or not folder_name:
+        return jsonify({"error": "Category and folderName are required"}), 400
+
+    # Sanitize category and folder_name to prevent directory traversal
+    category_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', category)
+    folder_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', folder_name)
+
+    if category_sanitized not in ["proj", "cert", "item", "achv"]:
+        return jsonify({"error": "Invalid category"}), 400
+
+    target_dir = os.path.abspath(os.path.join(WATCH_DIR, category_sanitized, folder_sanitized))
+    abs_watch_dir = os.path.abspath(WATCH_DIR)
+
+    if not target_dir.startswith(abs_watch_dir) or target_dir == abs_watch_dir:
+        return jsonify({"error": "Access denied"}), 403
+
+    if not os.path.exists(target_dir):
+        return jsonify({"error": "Directory does not exist"}), 404
+
+    try:
+        shutil.rmtree(target_dir)
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete directory: {str(e)}"}), 500
+
+    # Run scan to update database and broadcast WebSocket event
+    try:
+        data = scan_directory(WATCH_DIR)
+        save_data(data)
+        broadcast_update(data)
+    except Exception as e:
+        return jsonify({"error": f"Error updating database: {str(e)}"}), 500
+
+    return jsonify({"success": True})
+
 @app.route('/api/media/<category>/<entry_name>/<filename>')
 def serve_media(category, entry_name, filename):
     safe_path = os.path.abspath(os.path.join(WATCH_DIR, category, entry_name))
