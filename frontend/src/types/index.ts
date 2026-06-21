@@ -11,15 +11,21 @@ export interface PortfolioEntry {
   imgPath?: string;
   attachments?: string[];
   body: string;
+  done?: boolean;
 }
 
 export type OrbType = 'Q' | 'W' | 'E';
 
+export interface StatValue {
+  done: number;
+  upcoming: number;
+}
+
 export interface DashboardStats {
-  total: number;
-  quas: number;
-  wex: number;
-  exort: number;
-  gold: number;
-  grey: number;
+  total: StatValue;
+  quas: StatValue;
+  wex: StatValue;
+  exort: StatValue;
+  gold: StatValue;
+  grey: StatValue;
 }

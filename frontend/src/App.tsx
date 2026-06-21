@@ -6,6 +6,10 @@ import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
 import Timeline from './components/Timeline';
 import AddInstanceModal from './components/AddInstanceModal';
+import ProjectCard from './components/ProjectCard';
+import CertCard from './components/CertCard';
+import ItemCard from './components/ItemCard';
+import AchievementCard from './components/AchievementCard';
 import sfx from './lib/sfx';
 
 export const App: React.FC = () => {
@@ -62,6 +66,52 @@ export const App: React.FC = () => {
     return localStorage.getItem('isAddPopupOpen') === 'true';
   });
   const [editEntry, setEditEntry] = useState<PortfolioEntry | null>(null);
+  const [isDreamingOpen, setIsDreamingOpen] = useState(false);
+  const [checkedCards, setCheckedCards] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('checkedCards');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [statsMode, setStatsMode] = useState<'done' | 'upcoming' | 'combined'>(() => {
+    const saved = localStorage.getItem('statsMode');
+    if (saved === 'current') return 'done';
+    return (saved as 'done' | 'upcoming' | 'combined') || 'combined';
+  });
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const toggleCardChecked = (cardId: string) => {
+    const entry = entries.find(e => e.id === cardId);
+    const title = entry ? entry.title : 'this instance';
+    const isCurrentlyChecked = checkedCards[cardId] !== undefined ? checkedCards[cardId] : (entry?.done || false);
+    
+    const message = isCurrentlyChecked
+      ? `Are you sure you want to mark "${title}" as incomplete?`
+      : `Are you sure you want to mark "${title}" as done?`;
+      
+    setConfirmModal({
+      isOpen: true,
+      message,
+      onConfirm: () => {
+        if (soundEnabled) sfx.playTick();
+        setCheckedCards(prev => ({
+          ...prev,
+          [cardId]: !prev[cardId],
+        }));
+      }
+    });
+  };
 
   // Save settings and preferences to localStorage on change
   useEffect(() => {
@@ -76,12 +126,14 @@ export const App: React.FC = () => {
     localStorage.setItem('formalMode', String(formalMode));
     localStorage.setItem('thinnerCard', String(thinnerCard));
     localStorage.setItem('isAddPopupOpen', String(isAddPopupOpen));
+    localStorage.setItem('checkedCards', JSON.stringify(checkedCards));
+    localStorage.setItem('statsMode', statsMode);
     if (activeStatFilter === null) {
       localStorage.removeItem('activeStatFilter');
     } else {
       localStorage.setItem('activeStatFilter', activeStatFilter);
     }
-  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen]);
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -293,33 +345,58 @@ export const App: React.FC = () => {
 
   // Compute stats on the items before applying the specific stat override
   const stats: DashboardStats = (() => {
-    let quas = 0;
-    let wex = 0;
-    let exort = 0;
-    let gold = 0;
-    let grey = 0;
+    let quasDone = 0;
+    let quasUpcoming = 0;
+    let wexDone = 0;
+    let wexUpcoming = 0;
+    let exortDone = 0;
+    let exortUpcoming = 0;
+    let goldDone = 0;
+    let goldUpcoming = 0;
+    let greyDone = 0;
+    let greyUpcoming = 0;
+    let totalDone = 0;
+    let totalUpcoming = 0;
 
     entriesForStats.forEach(item => {
+      const isChecked = checkedCards[item.id] !== undefined ? checkedCards[item.id] : (item.done || false);
+      if (isChecked) {
+        totalDone++;
+      } else {
+        totalUpcoming++;
+      }
+
       if (item.source === 'achv') {
-        gold++;
+        if (isChecked) goldDone++;
+        else goldUpcoming++;
       }
       if (!item.skill) {
-        grey++;
+        if (isChecked) greyDone++;
+        else greyUpcoming++;
       } else {
         const s = item.skill.toLowerCase();
-        if (s.includes('q')) quas++;
-        if (s.includes('w')) wex++;
-        if (s.includes('e')) exort++;
+        if (s.includes('q')) {
+          if (isChecked) quasDone++;
+          else quasUpcoming++;
+        }
+        if (s.includes('w')) {
+          if (isChecked) wexDone++;
+          else wexUpcoming++;
+        }
+        if (s.includes('e')) {
+          if (isChecked) exortDone++;
+          else exortUpcoming++;
+        }
       }
     });
 
     return {
-      total: entriesForStats.length,
-      quas,
-      wex,
-      exort,
-      gold,
-      grey,
+      total: { done: totalDone, upcoming: totalUpcoming },
+      quas: { done: quasDone, upcoming: quasUpcoming },
+      wex: { done: wexDone, upcoming: wexUpcoming },
+      exort: { done: exortDone, upcoming: exortUpcoming },
+      gold: { done: goldDone, upcoming: goldUpcoming },
+      grey: { done: greyDone, upcoming: greyUpcoming },
     };
   })();
 
@@ -351,7 +428,7 @@ export const App: React.FC = () => {
       {sidebarCollapsed && (
         <button
           onClick={() => setSidebarCollapsed(false)}
-          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-bounce ${
+          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] ${
             sidebarPosition === 'right' ? 'right-6' : 'left-6'
           }`}
           title="Expand Invoker HUD & Search"
@@ -414,24 +491,41 @@ export const App: React.FC = () => {
                setFormalMode={setFormalMode}
                thinnerCard={thinnerCard}
                setThinnerCard={setThinnerCard}
+               statsMode={statsMode}
+               setStatsMode={setStatsMode}
              />
           </aside>
         )}
 
         {/* Right Side: Timeline Display (Fills the remaining main area) */}
         <section className="flex-1 min-w-0 min-h-screen">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
-              <span>Archives Timeline Feed</span>
-              {activeCombo && (
-                <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold animate-fadeIn">
-                  Active Filter: {getComboDisplayName(activeCombo)}
-                </span>
-              )}
-            </h2>
-            <span className="text-xs text-slate-400 font-semibold">
-              Showing {filteredEntries.length} entries
-            </span>
+          <div className="sticky top-0 bg-[#0b0d10]/95 backdrop-blur-md z-20 py-4 mb-4 border-b border-slate-900/60 flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <span>Archives Timeline Feed</span>
+                {activeCombo && (
+                  <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
+                    Active Filter: {getComboDisplayName(activeCombo)}
+                  </span>
+                )}
+              </h2>
+              <span className="text-xs text-slate-500 font-semibold bg-slate-950 px-2 py-1 rounded border border-slate-800/80">
+                Showing {filteredEntries.length} entries
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                if (soundEnabled) sfx.playInvoke();
+                setIsDreamingOpen(true);
+              }}
+              className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
+            >
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
+              <span className="relative z-10 flex items-center gap-1.5 font-dota">
+                🔮 Dreaming (5 Years Soon)
+              </span>
+            </button>
           </div>
 
           <Timeline
@@ -439,14 +533,16 @@ export const App: React.FC = () => {
             onOpenFolder={handleOpenFolder}
             onMore={handleMoreClick}
             thinnerCard={thinnerCard}
+            checkedCards={checkedCards}
+            onToggleChecked={toggleCardChecked}
           />
         </section>
       </main>
 
       {/* Details Markdown Modal */}
       {selectedEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden scale-in">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#15191e]">
               <div>
@@ -582,6 +678,178 @@ export const App: React.FC = () => {
         formalMode={formalMode}
         editEntry={editEntry}
       />
+
+      {/* Dreaming Modal Popup */}
+      {isDreamingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          {/* Static cosmic dream background glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_65%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.05)_0%,transparent_60%)] pointer-events-none" />
+          
+          <div className="bg-[#0c0e12]/95 border-2 border-emerald-500/40 rounded-2xl max-w-6xl w-full h-[85vh] flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.25)] overflow-hidden relative z-10">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-emerald-500/20 flex justify-between items-center bg-emerald-950/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg text-white font-black text-lg select-none">
+                  🔮
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-slate-100 uppercase tracking-widest font-dota flex items-center gap-2">
+                    <span>Dreaming Oracle: 5 Years Soon</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-350 border border-emerald-500/30 uppercase tracking-widest font-bold">
+                      Chronological Vision
+                    </span>
+                  </h2>
+                  <p className="text-[10px] text-emerald-400/80 uppercase tracking-wider font-semibold mt-0.5">
+                    Portfolio entries projected from past origins to upcoming futures (Earliest to Latest)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playTick();
+                  setIsDreamingOpen(false);
+                }}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors border border-transparent hover:border-slate-700/50"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body: Scrollable list of cards in ascending order of datestart */}
+            <div className="flex-1 overflow-y-auto p-8 bg-slate-950/20">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 justify-items-center">
+                {(() => {
+                  const today = new Date();
+                  const year = today.getFullYear();
+                  const month = String(today.getMonth() + 1).padStart(2, '0');
+                  const day = String(today.getDate()).padStart(2, '0');
+                  const todayStr = `${year}-${month}-${day}`;
+
+                  const maxDate = new Date();
+                  maxDate.setFullYear(year + 5);
+                  const maxYear = maxDate.getFullYear();
+                  const maxMonth = String(maxDate.getMonth() + 1).padStart(2, '0');
+                  const maxDay = String(maxDate.getDate()).padStart(2, '0');
+                  const maxDateStr = `${maxYear}-${maxMonth}-${maxDay}`;
+
+                  const upcomingEntries = entries.filter((entry) => {
+                    if (!entry.datestart) return false;
+                    return entry.datestart >= todayStr && entry.datestart <= maxDateStr;
+                  }).sort((a, b) => a.datestart.localeCompare(b.datestart));
+
+                  if (upcomingEntries.length === 0) {
+                    return (
+                      <div className="col-span-full flex flex-col items-center justify-center p-12 text-center border border-dashed border-emerald-900/40 rounded-xl bg-emerald-950/5 backdrop-blur-sm mt-8">
+                        <span className="text-3xl mb-3">🔮</span>
+                        <p className="text-sm text-emerald-300 font-semibold font-dota">
+                          No future timeline entries detected in the next 5 years.
+                        </p>
+                        <p className="text-xs text-emerald-400/70 mt-1 max-w-md">
+                          Today's date is <span className="text-cyan-400 font-mono">{todayStr}</span>. Click below to add a course or project with a future date to seed your dreams!
+                        </p>
+                        <button
+                          onClick={() => {
+                            if (soundEnabled) sfx.playTick();
+                            setIsAddPopupOpen(true);
+                          }}
+                          className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                        >
+                          <span>+ Add Upcoming Dream</span>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return upcomingEntries.map((entry) => {
+                    const cardProps = {
+                      key: `dream_${entry.id}`,
+                      entry,
+                      onOpenFolder: handleOpenFolder,
+                      onMore: handleMoreClick,
+                      thinnerCard,
+                      isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
+                      onToggleChecked: toggleCardChecked
+                    };
+                    switch (entry.source) {
+                      case 'proj':
+                        return <ProjectCard {...cardProps} />;
+                      case 'cert':
+                        return <CertCard {...cardProps} />;
+                      case 'item':
+                        return <ItemCard {...cardProps} />;
+                      case 'achv':
+                        return <AchievementCard {...cardProps} />;
+                      default:
+                        return null;
+                    }
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-emerald-500/20 flex justify-between items-center bg-emerald-950/10">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Invoker Portfolio Engine v1.0.0
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (soundEnabled) sfx.playTick();
+                    setIsAddPopupOpen(true);
+                  }}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                >
+                  <span>+ Add Instance</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (soundEnabled) sfx.playTick();
+                    setIsDreamingOpen(false);
+                  }}
+                  className="px-5 py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-200 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                >
+                  Close Vision
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4 text-center">
+            <div className="text-xl">🔮</div>
+            <p className="text-sm font-semibold text-slate-200 font-sans leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3 justify-center mt-2">
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playTick();
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400 font-sans"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playTick();
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm font-sans"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

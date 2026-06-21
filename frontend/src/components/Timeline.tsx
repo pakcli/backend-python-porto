@@ -11,6 +11,8 @@ interface TimelineProps {
   onOpenFolder: (path: string) => void;
   onMore: (entry: PortfolioEntry) => void;
   thinnerCard?: boolean;
+  checkedCards: Record<string, boolean>;
+  onToggleChecked: (id: string) => void;
 }
 
 const getMonthYearLabel = (dateStr: string) => {
@@ -30,11 +32,11 @@ const getMonthYearLabel = (dateStr: string) => {
   return dateStr;
 };
 
-export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMore, thinnerCard }) => {
+export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMore, thinnerCard, checkedCards, onToggleChecked }) => {
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed dark:border-slate-800 border-slate-200 rounded-xl bg-slate-500/5 backdrop-blur-sm animate-fadeIn">
-        <Flame className="text-slate-400 dark:text-slate-600 mb-3 animate-pulse" size={36} />
+      <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed dark:border-slate-800 border-slate-200 rounded-xl bg-slate-500/5 backdrop-blur-sm">
+        <Flame className="text-slate-400 dark:text-slate-600 mb-3" size={36} />
         <p className="text-sm dark:text-slate-400 text-slate-500 font-semibold font-dota">
           No matches found in the archives.
         </p>
@@ -68,15 +70,23 @@ export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMor
   }
 
   const renderCard = (entry: PortfolioEntry) => {
+    const cardProps = {
+      entry,
+      onOpenFolder,
+      onMore,
+      thinnerCard,
+      isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
+      onToggleChecked,
+    };
     switch (entry.source) {
       case 'proj':
-        return <ProjectCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
+        return <ProjectCard key={entry.id} {...cardProps} />;
       case 'cert':
-        return <CertCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
+        return <CertCard key={entry.id} {...cardProps} />;
       case 'item':
-        return <ItemCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
+        return <ItemCard key={entry.id} {...cardProps} />;
       case 'achv':
-        return <AchievementCard key={entry.id} entry={entry} onOpenFolder={onOpenFolder} onMore={onMore} thinnerCard={thinnerCard} />;
+        return <AchievementCard key={entry.id} {...cardProps} />;
       default:
         return null;
     }
@@ -85,7 +95,7 @@ export const Timeline: React.FC<TimelineProps> = ({ entries, onOpenFolder, onMor
   return (
     <div className="flex flex-col gap-8 pb-16">
       {groups.map((group, groupIdx) => (
-        <div key={groupIdx} className="flex flex-col gap-4 animate-fadeIn">
+        <div key={groupIdx} className="flex flex-col gap-4">
           {/* Timeline separator line and date label */}
           <div className="flex items-center gap-4">
             <span className="text-xs font-black dark:text-slate-400 text-slate-500 bg-slate-100 dark:bg-slate-900 border dark:border-slate-800 border-slate-200 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm font-dota">

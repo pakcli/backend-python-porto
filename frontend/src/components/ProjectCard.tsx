@@ -8,6 +8,8 @@ interface CardProps {
   onOpenFolder: (path: string) => void;
   onMore: (entry: PortfolioEntry) => void;
   thinnerCard?: boolean;
+  isChecked?: boolean;
+  onToggleChecked?: (id: string) => void;
 }
 
 const getOrbColors = (skillStr: string | undefined) => {
@@ -28,7 +30,7 @@ const getOrbColors = (skillStr: string | undefined) => {
   ];
 };
 
-export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thinnerCard }) => {
+export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thinnerCard, isChecked = false, onToggleChecked }) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   return (
@@ -41,7 +43,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
       <div className="flex-1 flex flex-col min-h-0">
         <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
           {/* Category Label Badge (far left) */}
-          <span className="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap shrink-0">
+          <span className="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-450 border border-emerald-500/20 whitespace-nowrap shrink-0">
             PROJECT
           </span>
           
@@ -75,7 +77,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
               <img 
                 src={entry.imgPath} 
                 alt={entry.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
                 }}
@@ -91,40 +93,60 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
         )}
       </div>
 
-      <div className={`flex flex-wrap gap-2 text-xs shrink-0 border-t dark:border-slate-800/50 border-slate-100 ${
+      <div className={`flex items-center justify-between text-xs shrink-0 border-t dark:border-slate-800/50 border-slate-100 ${
         thinnerCard ? 'pt-1.5' : 'pt-2'
       }`}>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onMore(entry); }} 
-          className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
-            thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
-          }`}
-        >
-          <FileText size={12} />
-          <span>More</span>
-        </button>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onOpenFolder(entry.folderPath); }} 
-          className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
-            thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
-          }`}
-        >
-          <Folder size={12} />
-          <span>Folder</span>
-        </button>
-        {entry.github && (
-          <a 
-            href={entry.github} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            onClick={(e) => e.stopPropagation()}
+        <div className="flex flex-wrap gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onMore(entry); }} 
             className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
               thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
             }`}
           >
-            <Github size={12} />
-            <span>GitHub</span>
-          </a>
+            <FileText size={12} />
+            <span>More</span>
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onOpenFolder(entry.folderPath); }} 
+            className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
+              thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
+            }`}
+          >
+            <Folder size={12} />
+            <span>Folder</span>
+          </button>
+          {entry.github && (
+            <a 
+              href={entry.github} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              onClick={(e) => e.stopPropagation()}
+              className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
+                thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
+              }`}
+            >
+              <Github size={12} />
+              <span>GitHub</span>
+            </a>
+          )}
+        </div>
+
+        {onToggleChecked && (
+          <label 
+            onClick={(e) => e.stopPropagation()} 
+            className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer select-none font-semibold uppercase tracking-wider ml-2"
+          >
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleChecked(entry.id);
+              }}
+              className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900 cursor-pointer"
+            />
+            <span>Done</span>
+          </label>
         )}
       </div>
     </div>

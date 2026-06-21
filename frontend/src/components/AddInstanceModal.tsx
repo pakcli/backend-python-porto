@@ -23,6 +23,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
   const [linkedin, setLinkedin] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [isFolderNameCustom, setIsFolderNameCustom] = useState(false);
+  const [done, setDone] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
@@ -44,12 +46,14 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     setGithub('');
     setLinkedin('');
     setBodyText('');
+    setDone(false);
     setSelectedFiles([]);
     setExistingFiles([]);
     setDeletedFiles([]);
     setThumbnailFilename('');
     setIsDragOver(false);
     setIsFolderNameCustom(false);
+    setShowDeleteConfirm(false);
   };
 
   const handleClose = () => {
@@ -76,6 +80,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
       setGithub(editEntry.github || '');
       setLinkedin(editEntry.linkedin || '');
       setBodyText(editEntry.body || '');
+      setDone(!!editEntry.done);
       
       setIsFolderNameCustom(true);
       
@@ -130,6 +135,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     if (metadata.skill) setSkill(metadata.skill);
     if (metadata.github) setGithub(metadata.github);
     if (metadata.linkedin) setLinkedin(metadata.linkedin);
+    if (metadata.done) setDone(metadata.done.toLowerCase() === 'true');
     setBodyText(body);
   };
 
@@ -212,7 +218,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     }
 
     // Format frontmatter and body
-    let frontmatter = `---\ntitle: ${title.trim()}\ndatestart: ${dateStart.trim()}\n`;
+    let frontmatter = `---\ntitle: ${title.trim()}\ndatestart: ${dateStart.trim()}\ndone: ${done}\n`;
     if (dateEnd.trim()) {
       frontmatter += `dateend: ${dateEnd.trim()}\n`;
     }
@@ -270,13 +276,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!isEditMode || !editEntry) return;
+    setShowDeleteConfirm(true);
+  };
 
-    const confirmMsg = `Are you sure you want to permanently delete this instance ("${title}")? This will delete the entire directory and all attachments.`;
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
+  const executeDelete = async () => {
+    if (!isEditMode || !editEntry) return;
 
     // Get folderName from folderPath (last portion of path)
     const parts = editEntry.folderPath.replace(/\\/g, '/').split('/');
@@ -306,8 +312,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full flex flex-col shadow-2xl overflow-hidden scale-in">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full flex flex-col shadow-2xl overflow-hidden">
         
         {/* Step 1: Category Selector */}
         {step === 1 && (
@@ -335,7 +341,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                   onClick={() => handleSelectCategory('proj')}
                   className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-blue-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
                 >
-                  <Folder className="text-blue-500 group-hover:scale-110 transition-transform mb-3" size={32} />
+                  <Folder className="text-blue-500 mb-3" size={32} />
                   <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-blue-400 transition-colors">
                     Project
                   </span>
@@ -349,7 +355,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                   onClick={() => handleSelectCategory('cert')}
                   className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-fuchsia-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(217,70,239,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
                 >
-                  <Award className="text-fuchsia-500 group-hover:scale-110 transition-transform mb-3" size={32} />
+                  <Award className="text-fuchsia-500 mb-3" size={32} />
                   <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-fuchsia-400 transition-colors">
                     Certification
                   </span>
@@ -363,7 +369,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                   onClick={() => handleSelectCategory('item')}
                   className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-slate-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(148,163,184,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
                 >
-                  <Cpu className="text-slate-400 group-hover:scale-110 transition-transform mb-3" size={32} />
+                  <Cpu className="text-slate-400 mb-3" size={32} />
                   <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-slate-350 transition-colors">
                     Item / Hardware
                   </span>
@@ -377,7 +383,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                   onClick={() => handleSelectCategory('achv')}
                   className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-amber-450/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
                 >
-                  <Trophy className="text-gold group-hover:scale-110 transition-transform mb-3" size={32} />
+                  <Trophy className="text-gold mb-3" size={32} />
                   <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-amber-400 transition-colors">
                     Achievement
                   </span>
@@ -662,6 +668,21 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                     className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none"
                   />
                 </div>
+
+                {/* Done Checkbox */}
+                <div className="flex items-center gap-2 py-1 col-span-2">
+                  <label className="flex items-center gap-2.5 text-xs font-semibold cursor-pointer text-slate-400 hover:text-slate-200 select-none">
+                    <input
+                      type="checkbox"
+                      checked={done}
+                      onChange={(e) => setDone(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-750 text-emerald-500 focus:ring-emerald-500/20 bg-slate-950 cursor-pointer"
+                    />
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold select-none">
+                      Done / Completed Instance
+                    </span>
+                  </label>
+                </div>
               </div>
 
               {/* MD Content Textarea */}
@@ -708,6 +729,36 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
         )}
 
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+          <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4 text-center">
+            <div className="text-xl">⚠️</div>
+            <p className="text-sm font-semibold text-slate-200 font-sans leading-relaxed">
+              Are you sure you want to permanently delete this instance ("{title}")? This will delete the entire directory and all attachments.
+            </p>
+            <div className="flex gap-3 justify-center mt-2">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                }}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400 font-sans"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  executeDelete();
+                }}
+                className="px-5 py-2 bg-red-650 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-colors shadow-sm font-sans"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -72,6 +72,12 @@ def scan_directory(watch_dir):
                     linkedin = str(linkedin).strip()
                 else:
                     linkedin = ""
+
+                done = post.get("done", False)
+                if isinstance(done, str):
+                    done = done.lower() == "true"
+                else:
+                    done = bool(done)
                     
                 img_name = ""
                 if os.path.exists(entry_path):
@@ -107,7 +113,8 @@ def scan_directory(watch_dir):
                     "folderPath": folder_path,
                     "imgPath": img_path,
                     "attachments": attachments,
-                    "body": post.content
+                    "body": post.content,
+                    "done": done
                 })
                 
             except Exception as e:

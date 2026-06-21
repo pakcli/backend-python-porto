@@ -22,6 +22,8 @@ interface HUDProps {
   setFormalMode: (formal: boolean) => void;
   thinnerCard: boolean;
   setThinnerCard: (thinner: boolean) => void;
+  statsMode: 'done' | 'upcoming' | 'combined';
+  setStatsMode: (mode: 'done' | 'upcoming' | 'combined') => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -44,6 +46,8 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setFormalMode,
   thinnerCard,
   setThinnerCard,
+  statsMode,
+  setStatsMode,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
 
@@ -87,6 +91,42 @@ export const InvokerHUD: React.FC<HUDProps> = ({
     } else {
       setActiveStatFilter(type);
     }
+  };
+
+  const getUpcomingBadgeStyle = (type: 'total' | 'quas' | 'wex' | 'exort' | 'gold' | 'grey') => {
+    switch (type) {
+      case 'total':
+        return 'text-slate-400 bg-slate-800/40 border border-slate-700/30';
+      case 'quas':
+        return 'text-cyan-400/80 bg-cyan-950/30 border border-cyan-500/20';
+      case 'wex':
+        return 'text-fuchsia-400/80 bg-fuchsia-950/30 border border-fuchsia-500/20';
+      case 'exort':
+        return 'text-orange-400/80 bg-orange-950/30 border border-orange-500/20';
+      case 'gold':
+        return 'text-amber-400/80 bg-amber-950/30 border border-amber-500/20';
+      case 'grey':
+        return 'text-slate-400 bg-slate-800/40 border border-slate-700/30';
+    }
+  };
+
+  const renderStatValue = (val: { done: number; upcoming: number }, type: 'total' | 'quas' | 'wex' | 'exort' | 'gold' | 'grey') => {
+    if (statsMode === 'done') {
+      return <span className="text-2xl font-black text-white">{val.done}</span>;
+    }
+    if (statsMode === 'upcoming') {
+      return <span className="text-2xl font-black text-white">{val.upcoming}</span>;
+    }
+    return (
+      <span className="text-2xl font-black text-white flex items-center gap-1.5 justify-center">
+        <span>{val.done}</span>
+        {val.upcoming > 0 && (
+          <span className={`px-2 py-0.5 text-xs font-black rounded-full select-none leading-none ${getUpcomingBadgeStyle(type)}`}>
+            +{val.upcoming}
+          </span>
+        )}
+      </span>
+    );
   };
 
   return (
@@ -167,78 +207,78 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => handleStatClick('total')}
             className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'total'
               ? 'bg-[#1e252f] border-blue-500 shadow-md ring-1 ring-blue-500/10'
-              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-blue-500/30 hover:bg-blue-950/10'
               }`}
           >
             <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Total Cards</span>
-            <span className="text-lg font-black text-white">{stats.total}</span>
+            {renderStatValue(stats.total, 'total')}
           </div>
 
           <div
             onClick={() => handleStatClick('quas')}
             className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'quas'
               ? 'bg-[#1e252f] border-cyan-500 shadow-[0_0_10px_rgba(0,208,255,0.25)] ring-1 ring-cyan-500/20'
-              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-cyan-500/30 hover:bg-cyan-950/10'
               }`}
           >
             <span className="text-[10px] text-cyan-400 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block animate-pulse shrink-0" />
               {formalMode ? 'Sistem' : 'Quas (Q)'}
             </span>
-            <span className="text-lg font-black text-white">{stats.quas}</span>
+            {renderStatValue(stats.quas, 'quas')}
           </div>
 
           <div
             onClick={() => handleStatClick('wex')}
             className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'wex'
               ? 'bg-[#1e252f] border-fuchsia-500 shadow-[0_0_10px_rgba(208,0,255,0.25)] ring-1 ring-fuchsia-500/20'
-              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-fuchsia-500/30 hover:bg-fuchsia-950/10'
               }`}
           >
             <span className="text-[10px] text-fuchsia-400 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 inline-block animate-pulse shrink-0" />
               {formalMode ? 'Program' : 'Wex (W)'}
             </span>
-            <span className="text-lg font-black text-white">{stats.wex}</span>
+            {renderStatValue(stats.wex, 'wex')}
           </div>
 
           <div
             onClick={() => handleStatClick('exort')}
             className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'exort'
               ? 'bg-[#1e252f] border-orange-500 shadow-[0_0_10px_rgba(255,106,0,0.25)] ring-1 ring-orange-500/20'
-              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-orange-500/30 hover:bg-orange-950/10'
               }`}
           >
             <span className="text-[10px] text-orange-400 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block animate-pulse shrink-0" />
               {formalMode ? 'Media / Visual' : 'Exort (E)'}
             </span>
-            <span className="text-lg font-black text-white">{stats.exort}</span>
+            {renderStatValue(stats.exort, 'exort')}
           </div>
 
           <div
             onClick={() => handleStatClick('gold')}
             className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'gold'
               ? 'bg-[#1e252f] border-amber-400 shadow-[0_0_10px_rgba(255,215,0,0.25)] ring-1 ring-amber-400/20'
-              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-amber-400/30 hover:bg-amber-950/10'
               }`}
           >
             <span className="text-[10px] text-amber-500 font-medium flex items-center gap-1 justify-center whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block animate-pulse shrink-0" />
               Gold (Achv)
             </span>
-            <span className="text-lg font-black text-white">{stats.gold}</span>
+            {renderStatValue(stats.gold, 'gold')}
           </div>
 
           <div
             onClick={() => handleStatClick('grey')}
             className={`p-2.5 rounded-lg flex flex-col items-center justify-center text-center border transition-all cursor-pointer ${activeStatFilter === 'grey'
               ? 'bg-[#1e252f] border-slate-500 shadow-md ring-1 ring-slate-500/10'
-              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-700 hover:bg-[#1a1f26]'
+              : 'bg-[#15191e] border-slate-800/80 hover:border-slate-500/30 hover:bg-slate-900/10'
               }`}
           >
             <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Item</span>
-            <span className="text-lg font-black text-white">{stats.grey}</span>
+            {renderStatValue(stats.grey, 'grey')}
           </div>
         </div>
       </div>
@@ -408,6 +448,31 @@ export const InvokerHUD: React.FC<HUDProps> = ({
           >
             Dota 2
           </button>
+        </div>
+      </div>
+
+      {/* HUD Statistics Mode Switcher */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>HUD Stats Mode</span>
+          <span className="text-slate-400 font-bold capitalize">
+            {statsMode === 'combined' ? 'Done + Upcoming' : statsMode}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          {(['done', 'upcoming', 'combined'] as const).map((sm) => (
+            <button
+              key={sm}
+              onClick={() => setStatsMode(sm)}
+              className={`py-1.5 text-[9px] font-bold rounded capitalize transition-all ${
+                statsMode === sm
+                  ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                  : 'text-slate-500 hover:text-slate-350'
+              }`}
+            >
+              {sm === 'combined' ? 'Done + x' : sm}
+            </button>
+          ))}
         </div>
       </div>
 
