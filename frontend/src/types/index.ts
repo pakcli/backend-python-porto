@@ -6,6 +6,7 @@ export interface PortfolioEntry {
   dateend?: string;
   skill?: string;
   github?: string;
+  linkedin?: string;
   folderPath: string;
   imgPath?: string;
   body: string;

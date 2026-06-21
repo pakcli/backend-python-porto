@@ -163,6 +163,67 @@ def open_folder():
     except Exception as e:
         return jsonify({"error": f"Failed to open directory: {str(e)}"}), 500
 
+@app.route('/api/entries/create', methods=['POST'])
+def create_entry():
+    category = request.form.get('category')  # 'proj', 'cert', 'item', 'achv'
+    folder_name = request.form.get('folderName')  # directory name
+    content = request.form.get('content')  # index.md contents
+
+    if not category or not folder_name or not content:
+        return jsonify({"error": "category, folderName, and content are required"}), 400
+
+    import re
+    # Sanitize category and folder name
+    category = re.sub(r'[^a-zA-Z0-9_\-]', '', category)
+    folder_name = re.sub(r'[^a-zA-Z0-9_\-]', '', folder_name)
+
+    if category not in ["proj", "cert", "item", "achv"]:
+        return jsonify({"error": "Invalid category"}), 400
+
+    if not folder_name:
+        return jsonify({"error": "Invalid folder name"}), 400
+
+    # Resolve target path securely
+    target_dir = os.path.abspath(os.path.join(WATCH_DIR, category, folder_name))
+    abs_watch_dir = os.path.abspath(WATCH_DIR)
+
+    # Security check: must be a child of WATCH_DIR
+    if not target_dir.startswith(abs_watch_dir):
+        return jsonify({"error": "Access denied: Path is outside the watched directory"}), 403
+
+    os.makedirs(target_dir, exist_ok=True)
+
+    # Save index.md
+    md_file_path = os.path.join(target_dir, "index.md")
+    try:
+        with open(md_file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        return jsonify({"error": f"Failed to save index.md: {str(e)}"}), 500
+
+    # Save uploaded file if any
+    uploaded_file = request.files.get('file')
+    if uploaded_file and uploaded_file.filename:
+        filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '', uploaded_file.filename)
+        if filename:
+            ext = os.path.splitext(filename)[1].lower()
+            if ext in ['.png', '.jpg', '.jpeg', '.pdf']:
+                file_path = os.path.join(target_dir, filename)
+                try:
+                    uploaded_file.save(file_path)
+                except Exception as e:
+                    return jsonify({"error": f"Failed to save uploaded file: {str(e)}"}), 500
+
+    # Run scan to update database and broadcast WebSocket event
+    try:
+        data = scan_directory(WATCH_DIR)
+        save_data(data)
+        broadcast_update(data)
+    except Exception as e:
+        return jsonify({"error": f"Error updating database: {str(e)}"}), 500
+
+    return jsonify({"success": True})
+
 @app.route('/api/media/<category>/<entry_name>/<filename>')
 def serve_media(category, entry_name, filename):
     safe_path = os.path.abspath(os.path.join(WATCH_DIR, category, entry_name))

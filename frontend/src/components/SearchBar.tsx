@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, AlertTriangle, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
+import { Search, AlertTriangle, ArrowLeftRight, Eye, EyeOff, Plus } from 'lucide-react';
 
 interface SearchBarProps {
   searchQuery: string;
@@ -8,6 +8,7 @@ interface SearchBarProps {
   setSidebarPosition: (pos: 'left' | 'right') => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  onAddClick: () => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -17,6 +18,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   setSidebarPosition,
   sidebarCollapsed,
   setSidebarCollapsed,
+  onAddClick,
 }) => {
   const [isValidRegex, setIsValidRegex] = useState(true);
 
@@ -64,6 +66,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       </div>
 
       <div className="flex gap-2 shrink-0">
+        {/* ADD New Instance Button */}
+        <button
+          onClick={onAddClick}
+          className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all"
+          title="Add New Instance"
+        >
+          <Plus size={20} className="text-emerald-500" />
+        </button>
+
         {/* Toggle Sidebar Side */}
         <button
           onClick={() => setSidebarPosition(sidebarPosition === 'left' ? 'right' : 'left')}

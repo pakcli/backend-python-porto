@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Eye } from 'lucide-react';
+import { X, Github, Folder, Info, Eye, Linkedin } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
 import Timeline from './components/Timeline';
+import AddInstanceModal from './components/AddInstanceModal';
 import sfx from './lib/sfx';
 
 export const App: React.FC = () => {
@@ -57,6 +58,9 @@ export const App: React.FC = () => {
   const [thinnerCard, setThinnerCard] = useState<boolean>(() => {
     return localStorage.getItem('thinnerCard') === 'true';
   });
+  const [isAddPopupOpen, setIsAddPopupOpen] = useState<boolean>(() => {
+    return localStorage.getItem('isAddPopupOpen') === 'true';
+  });
 
   // Save settings and preferences to localStorage on change
   useEffect(() => {
@@ -70,12 +74,13 @@ export const App: React.FC = () => {
     localStorage.setItem('volume', String(volume));
     localStorage.setItem('formalMode', String(formalMode));
     localStorage.setItem('thinnerCard', String(thinnerCard));
+    localStorage.setItem('isAddPopupOpen', String(isAddPopupOpen));
     if (activeStatFilter === null) {
       localStorage.removeItem('activeStatFilter');
     } else {
       localStorage.setItem('activeStatFilter', activeStatFilter);
     }
-  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard]);
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -384,6 +389,7 @@ export const App: React.FC = () => {
               setSidebarPosition={setSidebarPosition}
               sidebarCollapsed={sidebarCollapsed}
               setSidebarCollapsed={setSidebarCollapsed}
+              onAddClick={() => setIsAddPopupOpen(true)}
             />
 
             {/* Interactive HUD */}
@@ -501,6 +507,17 @@ export const App: React.FC = () => {
                   <span>View GitHub</span>
                 </a>
               )}
+              {selectedEntry.linkedin && (
+                <a
+                  href={selectedEntry.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-900/45 hover:bg-blue-800/60 border border-blue-800/30 text-blue-205 rounded-lg text-xs font-bold transition-colors"
+                >
+                  <Linkedin size={14} />
+                  <span>LinkedIn</span>
+                </a>
+              )}
               <button
                 onClick={handleCloseModal}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
@@ -511,6 +528,13 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Add New Instance Modal */}
+      <AddInstanceModal
+        isOpen={isAddPopupOpen}
+        onClose={() => setIsAddPopupOpen(false)}
+        formalMode={formalMode}
+      />
     </div>
   );
 };

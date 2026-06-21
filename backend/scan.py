@@ -67,6 +67,12 @@ def scan_directory(watch_dir):
                 else:
                     github = ""
                     
+                linkedin = post.get("linkedin", "")
+                if linkedin:
+                    linkedin = str(linkedin).strip()
+                else:
+                    linkedin = ""
+                    
                 img_name = ""
                 if os.path.exists(entry_path):
                     for filename in os.listdir(entry_path):
@@ -91,6 +97,7 @@ def scan_directory(watch_dir):
                     "dateend": dateend,
                     "skill": skill,
                     "github": github,
+                    "linkedin": linkedin,
                     "folderPath": folder_path,
                     "imgPath": img_path,
                     "body": post.content
