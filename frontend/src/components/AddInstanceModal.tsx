@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { PortfolioEntry } from '../types';
 import PdfThumbnail from './PdfThumbnail';
 
@@ -16,6 +16,7 @@ interface AddInstanceModalProps {
   onHistoryForward?: () => void;
   filteredEntries?: PortfolioEntry[];
   onNavigateToEntry?: (entry: PortfolioEntry) => void;
+  onDuplicate?: (cardId: string) => void;
 }
 
 export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
@@ -30,7 +31,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   onHistoryBack,
   onHistoryForward,
   filteredEntries,
-  onNavigateToEntry
+  onNavigateToEntry,
+  onDuplicate
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv'>('proj');
@@ -992,12 +994,23 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
             <div className="p-4 border-t border-slate-800 flex justify-between items-center bg-[#15191e] shrink-0">
               <div>
                 {isEditMode && (
-                  <button
-                    onClick={handleDelete}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
-                  >
-                    Delete Instance
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDelete}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      Delete Instance
+                    </button>
+                    {onDuplicate && editEntry && (
+                      <button
+                        onClick={() => onDuplicate(editEntry.id)}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                      >
+                        <Copy size={14} />
+                        Duplicate
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex gap-2">

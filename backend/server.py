@@ -403,6 +403,85 @@ def toggle_done():
         
     return jsonify({"success": True})
 
+@app.route('/api/entries/duplicate', methods=['POST'])
+def duplicate_entry():
+    import re
+    import frontmatter
+    import shutil
+
+    req_data = request.get_json() or {}
+    card_id = req_data.get("id")
+
+    if not card_id:
+        return jsonify({"error": "id is required"}), 400
+
+    # Extract category and entry_name from card_id (e.g., category_entryname)
+    category = None
+    for cat in ["proj", "cert", "item", "achv"]:
+        if card_id.startswith(cat + "_"):
+            category = cat
+            entry_name = card_id[len(cat) + 1:]
+            break
+
+    if not category:
+        return jsonify({"error": "Invalid card ID structure"}), 400
+
+    entry_name_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', entry_name)
+    source_dir = os.path.abspath(os.path.join(WATCH_DIR, category, entry_name_sanitized))
+    abs_watch_dir = os.path.abspath(WATCH_DIR)
+
+    # Security check: must be a child of WATCH_DIR
+    if not source_dir.startswith(abs_watch_dir) or source_dir == abs_watch_dir:
+        return jsonify({"error": "Access denied"}), 403
+
+    if not os.path.exists(source_dir):
+        return jsonify({"error": "Source entry not found"}), 404
+
+    # Determine a unique target directory name
+    counter = 1
+    target_folder_name = f"{entry_name_sanitized}-copy"
+    target_dir = os.path.abspath(os.path.join(WATCH_DIR, category, target_folder_name))
+
+    while os.path.exists(target_dir):
+        counter += 1
+        target_folder_name = f"{entry_name_sanitized}-copy-{counter}"
+        target_dir = os.path.abspath(os.path.join(WATCH_DIR, category, target_folder_name))
+
+    try:
+        # Copy directory recursively
+        shutil.copytree(source_dir, target_dir)
+        
+        # Modify title in the duplicated index.md if it exists
+        md_file_path = os.path.join(target_dir, "index.md")
+        if os.path.exists(md_file_path):
+            with open(md_file_path, "r", encoding="utf-8") as f:
+                post = frontmatter.load(f)
+            
+            old_title = post.metadata.get("title", entry_name_sanitized)
+            suffix = " (Copy)" if counter == 1 else f" (Copy {counter})"
+            post.metadata["title"] = f"{old_title}{suffix}"
+            
+            content = frontmatter.dumps(post)
+            with open(md_file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+    except Exception as e:
+        if os.path.exists(target_dir):
+            try:
+                shutil.rmtree(target_dir)
+            except:
+                pass
+        return jsonify({"error": f"Failed to duplicate: {str(e)}"}), 500
+
+    # Run scan to update database and broadcast WebSocket event
+    try:
+        data = scan_directory(WATCH_DIR)
+        save_data(data)
+        broadcast_update(data)
+    except Exception as e:
+        return jsonify({"error": f"Error updating database: {str(e)}"}), 500
+
+    return jsonify({"success": True})
+
 @app.route('/api/media/<category>/<entry_name>/<filename>')
 def serve_media(category, entry_name, filename):
     safe_path = os.path.abspath(os.path.join(WATCH_DIR, category, entry_name))

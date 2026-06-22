@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Eye, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, Github, Folder, Info, Eye, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -163,6 +163,30 @@ export const App: React.FC = () => {
         }
       }
     });
+  };
+
+  const handleDuplicateEntry = async (cardId: string) => {
+    try {
+      if (soundEnabled) sfx.playTick();
+      const res = await fetch('/api/entries/duplicate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: cardId }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(`Error: ${result.error || 'Failed to duplicate instance'}`);
+      } else {
+        // Close modal/edit panels on success
+        setIsEditingInline(false);
+        setIsAddPopupOpen(false);
+        setEditEntry(null);
+      }
+    } catch (err) {
+      alert(`Network error: ${err}`);
+    }
   };
 
   // Save settings and preferences to localStorage on change
@@ -756,6 +780,7 @@ export const App: React.FC = () => {
                     onHistoryForward={handleHistoryForward}
                     filteredEntries={filteredEntries}
                     onNavigateToEntry={(entry) => navigateToEntry(entry, 'prev-next')}
+                    onDuplicate={handleDuplicateEntry}
                   />
                 </div>
               ) : (() => {
@@ -921,6 +946,9 @@ export const App: React.FC = () => {
                             <Github size={12} /><span>GitHub</span>
                           </a>
                         )}
+                        <button onClick={() => handleDuplicateEntry(selectedEntry.id)} className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition-colors shadow-sm">
+                          <Copy size={12} /><span>Duplicate</span>
+                        </button>
                         <button onClick={() => { setEditEntry(selectedEntry); setIsEditingInline(true); }} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition-colors">Edit</button>
                         <button onClick={handleCloseModal} className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[11px] font-bold transition-colors text-slate-400">Close</button>
                       </div>
@@ -1250,6 +1278,13 @@ export const App: React.FC = () => {
                 </a>
               )}
               <button
+                onClick={() => handleDuplicateEntry(selectedEntry.id)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+              >
+                <Copy size={14} />
+                <span>Duplicate</span>
+              </button>
+              <button
                 onClick={() => {
                   setEditEntry(selectedEntry);
                   setIsAddPopupOpen(true);
@@ -1287,6 +1322,7 @@ export const App: React.FC = () => {
         onHistoryForward={handleHistoryForward}
         filteredEntries={filteredEntries}
         onNavigateToEntry={(entry) => navigateToEntry(entry, 'prev-next')}
+        onDuplicate={handleDuplicateEntry}
       />
 
       {/* Dreaming Modal Popup */}
