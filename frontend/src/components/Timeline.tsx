@@ -13,7 +13,8 @@ interface TimelineProps {
   thinnerCard?: boolean;
   checkedCards: Record<string, boolean>;
   onToggleChecked: (id: string) => void;
-  nodeLineMode: 'focus' | 'all';
+  nodeLineMode: 'focus' | 'focus-no-offset' | 'all';
+  isSplitView?: boolean;
 }
 
 interface Connection {
@@ -67,6 +68,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   checkedCards,
   onToggleChecked,
   nodeLineMode,
+  isSplitView,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -237,10 +239,11 @@ export const Timeline: React.FC<TimelineProps> = ({
     if (!cardElement) return null;
 
     // Focus mode visual roles
-    const isFocused = nodeLineMode === 'focus' && hoveredCardId === entry.id;
-    const isDependencyOfFocused = nodeLineMode === 'focus' && !!hoveredCardId &&
+    const isFocusActive = nodeLineMode === 'focus' || nodeLineMode === 'focus-no-offset';
+    const isFocused = isFocusActive && hoveredCardId === entry.id;
+    const isDependencyOfFocused = isFocusActive && !!hoveredCardId &&
       connections.some(c => c.fromId === hoveredCardId && c.toId === entry.id);
-    const isDependentOfFocused = nodeLineMode === 'focus' && !!hoveredCardId &&
+    const isDependentOfFocused = isFocusActive && !!hoveredCardId &&
       connections.some(c => c.toId === hoveredCardId && c.fromId === entry.id);
 
     // Paper-stack layout transforms:
@@ -253,14 +256,14 @@ export const Timeline: React.FC<TimelineProps> = ({
       position: 'relative',
     };
 
-    if (nodeLineMode === 'focus' && hoveredCardId) {
+    if (isFocusActive && hoveredCardId) {
       if (isFocused) {
         wrapperStyle.transform = 'translateX(0px)';
         wrapperStyle.opacity = 1;
         wrapperStyle.zIndex = 20;
       } else if (isDependencyOfFocused) {
         // Dependencies: shifted right to "stack" below and right of focused
-        wrapperStyle.transform = 'translateX(32px)';
+        wrapperStyle.transform = nodeLineMode === 'focus' ? 'translateX(32px)' : 'translateX(0px)';
         wrapperStyle.opacity = 1;
         wrapperStyle.zIndex = 15;
       } else if (isDependentOfFocused) {
@@ -270,7 +273,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         wrapperStyle.zIndex = 14;
       } else {
         // Unrelated: pushed far right and dimmed
-        wrapperStyle.transform = 'translateX(72px)';
+        wrapperStyle.transform = nodeLineMode === 'focus' ? 'translateX(72px)' : 'translateX(0px)';
         wrapperStyle.opacity = 0.18;
         wrapperStyle.filter = 'grayscale(0.5)';
         wrapperStyle.zIndex = 1;
@@ -318,7 +321,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               : false;
 
             // In "all" mode: dim unrelated when hovering; in "focus" mode: hide unless related
-            const opacity = nodeLineMode === 'focus'
+            const opacity = (nodeLineMode === 'focus' || nodeLineMode === 'focus-no-offset')
               ? (isVisible ? 0.7 : 0)
               : (hoveredCardId ? (isRelated ? 0.75 : 0.08) : 0.1);
 
@@ -368,7 +371,11 @@ export const Timeline: React.FC<TimelineProps> = ({
           </div>
 
           {/* Cards List in this Group */}
-          <div className="grid grid-cols-1 min-[540px]:grid-cols-[repeat(auto-fill,512px)] gap-6">
+          <div className={
+            isSplitView
+              ? "grid grid-cols-2 gap-4"
+              : "grid grid-cols-1 min-[540px]:grid-cols-[repeat(auto-fill,512px)] gap-6"
+          }>
             {group.items.map(renderCard)}
           </div>
         </div>

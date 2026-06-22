@@ -91,8 +91,8 @@ export const App: React.FC = () => {
     if (saved === 'current') return 'done';
     return (saved as 'done' | 'upcoming' | 'combined') || 'combined';
   });
-  const [nodeLineMode, setNodeLineMode] = useState<'focus' | 'all'>(() => {
-    return (localStorage.getItem('nodeLineMode') as 'focus' | 'all') || 'all';
+  const [nodeLineMode, setNodeLineMode] = useState<'focus' | 'focus-no-offset' | 'all'>(() => {
+    return (localStorage.getItem('nodeLineMode') as 'focus' | 'focus-no-offset' | 'all') || 'all';
   });
   const [readViewMode, setReadViewMode] = useState<'popup' | 'split'>(() => {
     return (localStorage.getItem('readViewMode') as 'popup' | 'split') || 'popup';
@@ -126,12 +126,41 @@ export const App: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       message,
-      onConfirm: () => {
+      onConfirm: async () => {
         if (soundEnabled) sfx.playTick();
+        const nextState = !isCurrentlyChecked;
+
+        // Optimistically update frontend local state
         setCheckedCards(prev => ({
           ...prev,
-          [cardId]: !prev[cardId],
+          [cardId]: nextState,
         }));
+
+        try {
+          const res = await fetch('/api/entries/toggle-done', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: cardId, done: nextState }),
+          });
+          const result = await res.json();
+          if (!res.ok) {
+            alert(`Error: ${result.error || 'Failed to update status on server'}`);
+            // Rollback optimistic update
+            setCheckedCards(prev => ({
+              ...prev,
+              [cardId]: isCurrentlyChecked,
+            }));
+          }
+        } catch (err) {
+          alert(`Network error: ${err}`);
+          // Rollback optimistic update
+          setCheckedCards(prev => ({
+            ...prev,
+            [cardId]: isCurrentlyChecked,
+          }));
+        }
       }
     });
   };
@@ -540,6 +569,12 @@ export const App: React.FC = () => {
     navigateToEntry(null);
   };
 
+  const openAddModal = () => {
+    setEditEntry(null);
+    setIsEditingInline(false);
+    setIsAddPopupOpen(true);
+  };
+
   return (
     <div className="h-screen max-h-screen font-dota flex flex-col transition-colors duration-200 overflow-hidden bg-[#0b0d10]">
       {/* Floating Expand HUD Button when Sidebar is Collapsed */}
@@ -585,7 +620,7 @@ export const App: React.FC = () => {
               setSidebarPosition={setSidebarPosition}
               sidebarCollapsed={sidebarCollapsed}
               setSidebarCollapsed={setSidebarCollapsed}
-              onAddClick={() => setIsAddPopupOpen(true)}
+              onAddClick={openAddModal}
             />
 
             {/* Interactive HUD */}
@@ -680,7 +715,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => {
                       if (soundEnabled) sfx.playTick();
-                      setIsAddPopupOpen(true);
+                      openAddModal();
                     }}
                     className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/30 hover:border-emerald-500/50 text-white rounded-lg text-xs font-bold transition-all shadow-md"
                   >
@@ -696,6 +731,7 @@ export const App: React.FC = () => {
                   checkedCards={checkedCards}
                   onToggleChecked={toggleCardChecked}
                   nodeLineMode={nodeLineMode}
+                  isSplitView={readViewMode === 'split' && !!selectedEntry}
                 />
               )}
             </div>
@@ -1325,7 +1361,7 @@ export const App: React.FC = () => {
                         <button
                           onClick={() => {
                             if (soundEnabled) sfx.playTick();
-                            setIsAddPopupOpen(true);
+                            openAddModal();
                           }}
                           className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                         >
@@ -1371,7 +1407,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => {
                     if (soundEnabled) sfx.playTick();
-                    setIsAddPopupOpen(true);
+                    openAddModal();
                   }}
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                 >

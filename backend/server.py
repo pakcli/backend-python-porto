@@ -342,6 +342,67 @@ def delete_entry():
 
     return jsonify({"success": True})
 
+@app.route('/api/entries/toggle-done', methods=['POST'])
+def toggle_done():
+    import re
+    import frontmatter
+    
+    req_data = request.get_json() or {}
+    card_id = req_data.get("id")
+    done_val = req_data.get("done")
+    
+    if not card_id or done_val is None:
+        return jsonify({"error": "id and done are required"}), 400
+        
+    # Extract category and entry_name from card_id (e.g., category_entryname)
+    category = None
+    for cat in ["proj", "cert", "item", "achv"]:
+        if card_id.startswith(cat + "_"):
+            category = cat
+            entry_name = card_id[len(cat) + 1:]
+            break
+            
+    if not category:
+        return jsonify({"error": "Invalid card ID structure"}), 400
+        
+    entry_name_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', entry_name)
+    target_dir = os.path.abspath(os.path.join(WATCH_DIR, category, entry_name_sanitized))
+    abs_watch_dir = os.path.abspath(WATCH_DIR)
+    
+    # Security check: must be a child of WATCH_DIR
+    if not target_dir.startswith(abs_watch_dir) or target_dir == abs_watch_dir:
+        return jsonify({"error": "Access denied"}), 403
+        
+    md_file_path = os.path.join(target_dir, "index.md")
+    if not os.path.exists(md_file_path):
+        return jsonify({"error": "Entry index.md not found"}), 404
+        
+    try:
+        # Load frontmatter
+        with open(md_file_path, "r", encoding="utf-8") as f:
+            post = frontmatter.load(f)
+            
+        # Update metadata field
+        post.metadata["done"] = bool(done_val)
+        
+        # Save back
+        content = frontmatter.dumps(post)
+        with open(md_file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+            
+    except Exception as e:
+        return jsonify({"error": f"Failed to update index.md: {str(e)}"}), 500
+        
+    # Run scan to update database and broadcast WebSocket event
+    try:
+        data = scan_directory(WATCH_DIR)
+        save_data(data)
+        broadcast_update(data)
+    except Exception as e:
+        return jsonify({"error": f"Error updating database: {str(e)}"}), 500
+        
+    return jsonify({"success": True})
+
 @app.route('/api/media/<category>/<entry_name>/<filename>')
 def serve_media(category, entry_name, filename):
     safe_path = os.path.abspath(os.path.join(WATCH_DIR, category, entry_name))

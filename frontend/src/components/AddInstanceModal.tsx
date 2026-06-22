@@ -249,6 +249,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     }
   };
 
+  const handleSetAsTitle = (filename: string) => {
+    const lastDot = filename.lastIndexOf('.');
+    const baseName = lastDot !== -1 ? filename.substring(0, lastDot) : filename;
+    const cleanTitle = baseName.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+    handleTitleChange(cleanTitle);
+  };
+
   const processFile = async (file: File) => {
     const extension = file.name.split('.').pop()?.toLowerCase();
     
@@ -389,6 +396,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     }
   };
 
+
+  const hasAttachments = existingFiles.filter(f => !deletedFiles.includes(f)).length > 0 || selectedFiles.length > 0;
 
   if (!isOpen) return null;
 
@@ -622,7 +631,11 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                className={`border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                  hasAttachments
+                    ? 'p-2 flex flex-row items-center justify-center gap-1.5'
+                    : 'p-4 flex flex-col items-center justify-center text-center'
+                } ${
                   isDragOver
                     ? 'border-cyan-500 bg-cyan-500/5'
                     : 'border-slate-800 bg-slate-950/20 hover:border-slate-700'
@@ -636,13 +649,21 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                   accept=".png,.jpg,.jpeg,.pdf,.md"
                   multiple
                 />
-                <Upload className="text-slate-400 mb-1 animate-bounce" style={{ animationDuration: '3s' }} size={20} />
-                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">
-                  Drag & Drop files here, or click to browse
-                </span>
-                <span className="text-[9px] text-slate-500 mt-0.5">
-                  Accepts <code className="text-slate-400">.md</code> (to load text/frontmatter) or <code className="text-slate-400">.png, .jpg, .pdf</code> (as attachments)
-                </span>
+                {hasAttachments ? (
+                  <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider text-center">
+                    Drag & Drop files here, or click to browse <span className="text-slate-500 font-medium normal-case font-sans font-semibold">(.md, .png, .jpg, .pdf)</span>
+                  </span>
+                ) : (
+                  <>
+                    <Upload className="text-slate-400 mb-1 animate-bounce" style={{ animationDuration: '3s' }} size={20} />
+                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">
+                      Drag & Drop files here, or click to browse
+                    </span>
+                    <span className="text-[9px] text-slate-500 mt-0.5">
+                      Accepts <code className="text-slate-400">.md</code> (to load text/frontmatter) or <code className="text-slate-400">.png, .jpg, .pdf</code> (as attachments)
+                    </span>
+                  </>
+                )}
               </div>
 
               {/* Attachment List */}
@@ -672,6 +693,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                             </div>
                             
                             <div className="flex items-center gap-3 shrink-0 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => handleSetAsTitle(filename)}
+                                className="text-emerald-500 hover:text-emerald-450 text-[10px] uppercase font-bold hover:underline"
+                              >
+                                Set Title
+                              </button>
                               {isMainable && !isMain && (
                                 <button
                                   type="button"
@@ -715,6 +743,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                           </div>
                           
                           <div className="flex items-center gap-3 shrink-0 ml-4 font-sans">
+                            <button
+                              type="button"
+                              onClick={() => handleSetAsTitle(file.name)}
+                              className="text-emerald-500 hover:text-emerald-450 text-[10px] uppercase font-bold hover:underline"
+                            >
+                              Set Title
+                            </button>
                             {isMainable && !isMain && (
                               <button
                                 type="button"

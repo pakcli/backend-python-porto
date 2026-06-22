@@ -37,7 +37,7 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
     <div 
       onClick={() => onMore(entry)}
       className={`bg-[#121418]/90 border-[3px] border-[#d4af50]/80 rounded-xl hover:border-slate-200/60 transition-all duration-300 achievement-card-glow shadow-[0_0_20px_rgba(212,175,80,0.25)] group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
-        thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
+        thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'aspect-[4/3] p-5'
       }`}
     >
       {/* Decorative background trophy icon */}
@@ -72,29 +72,27 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
           {entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}
         </div>
 
-        {entry.imgPath ? (
-          <div className={`w-full flex-1 min-h-0 rounded overflow-hidden border border-amber-500/20 dark:border-slate-800 bg-slate-900/50 flex items-center justify-center ${
-            thinnerCard ? 'mb-1.5' : 'mb-3'
-          }`}>
-            {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
-              <PdfThumbnail src={entry.imgPath} title={entry.title} />
-            ) : (
-              <img 
-                src={entry.imgPath} 
-                alt={entry.title} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          <div className={`w-full flex-1 min-h-0 rounded border border-dashed dark:border-slate-800 border-slate-200 flex items-center justify-center text-slate-400 dark:text-slate-600 text-xs ${
-            thinnerCard ? 'mb-1.5' : 'mb-3'
-          }`}>
-            No image preview available
-          </div>
+        {!thinnerCard && (
+          entry.imgPath ? (
+            <div className="w-full flex-1 min-h-0 rounded overflow-hidden border border-amber-500/20 dark:border-slate-800 bg-slate-900/50 flex items-center justify-center mb-3">
+              {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
+                <PdfThumbnail src={entry.imgPath} title={entry.title} />
+              ) : (
+                <img 
+                  src={entry.imgPath} 
+                  alt={entry.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="w-full flex-1 min-h-0 rounded border border-dashed dark:border-slate-800 border-slate-200 flex items-center justify-center text-slate-400 dark:text-slate-600 text-xs mb-3">
+              No image preview available
+            </div>
+          )
         )}
       </div>
 

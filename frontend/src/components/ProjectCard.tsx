@@ -37,7 +37,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
     <div 
       onClick={() => onMore(entry)}
       className={`bg-[#12161b]/95 border border-slate-800/80 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
-        thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
+        thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'aspect-[4/3] p-5'
       }`}
     >
       <div className="flex-1 flex flex-col min-h-0">
@@ -67,29 +67,27 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
           {entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}
         </div>
 
-        {entry.imgPath ? (
-          <div className={`w-full flex-1 min-h-0 rounded overflow-hidden border dark:border-slate-800 border-slate-200 bg-slate-900/50 flex items-center justify-center ${
-            thinnerCard ? 'mb-1.5' : 'mb-3'
-          }`}>
-            {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
-              <PdfThumbnail src={entry.imgPath} title={entry.title} />
-            ) : (
-              <img 
-                src={entry.imgPath} 
-                alt={entry.title} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          <div className={`w-full flex-1 min-h-0 rounded border border-dashed dark:border-slate-800 border-slate-200 flex items-center justify-center text-slate-400 dark:text-slate-600 text-xs ${
-            thinnerCard ? 'mb-1.5' : 'mb-3'
-          }`}>
-            No image preview available
-          </div>
+        {!thinnerCard && (
+          entry.imgPath ? (
+            <div className="w-full flex-1 min-h-0 rounded overflow-hidden border dark:border-slate-800 border-slate-200 bg-slate-900/50 flex items-center justify-center mb-3">
+              {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
+                <PdfThumbnail src={entry.imgPath} title={entry.title} />
+              ) : (
+                <img 
+                  src={entry.imgPath} 
+                  alt={entry.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="w-full flex-1 min-h-0 rounded border border-dashed dark:border-slate-800 border-slate-200 flex items-center justify-center text-slate-400 dark:text-slate-600 text-xs mb-3">
+              No image preview available
+            </div>
+          )
         )}
       </div>
 
