@@ -12,15 +12,18 @@ import ItemCard from './components/ItemCard';
 import AchievementCard from './components/AchievementCard';
 import sfx from './lib/sfx';
 
-const getDependencyColor = (dep: PortfolioEntry) => {
+
+const getDependencyColor = (dep: PortfolioEntry, checkedCards?: Record<string, boolean>) => {
+  const isDone = checkedCards && checkedCards[dep.id] !== undefined
+    ? checkedCards[dep.id]
+    : (dep.done || false);
+  if (!isDone) return '#ef4444'; // Red for not done
+  if (dep.source === 'proj') return '#10b981'; // Green
+  if (dep.source === 'item' || dep.source === 'cert') return '#64748b'; // Gray
   if (dep.source === 'achv') return '#fbbf24'; // Gold
-  if (dep.source === 'item') return '#64748b'; // Slate
-  const skill = (dep.skill || '').toLowerCase();
-  if (skill.includes('q')) return '#06b6d4'; // Cyan
-  if (skill.includes('w')) return '#d946ef'; // Fuchsia
-  if (skill.includes('e')) return '#f97316'; // Orange
   return '#64748b'; // Default Slate
 };
+
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return 'Undated';
@@ -826,7 +829,22 @@ export const App: React.FC = () => {
     if (closestEntry) {
       const el = document.getElementById(`card-${closestEntry.id}`);
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        let scrollParent = el.parentElement;
+        while (scrollParent && scrollParent !== document.body) {
+          const style = window.getComputedStyle(scrollParent);
+          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            break;
+          }
+          scrollParent = scrollParent.parentElement;
+        }
+        if (scrollParent && scrollParent !== document.body) {
+          const elRect = el.getBoundingClientRect();
+          const parentRect = scrollParent.getBoundingClientRect();
+          const targetScrollTop = scrollParent.scrollTop + (elRect.top - parentRect.top) - (parentRect.height / 2) + (elRect.height / 2);
+          scrollParent.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+        } else {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     }
   };
@@ -1033,11 +1051,13 @@ export const App: React.FC = () => {
                   entries={isDreamingOpen && readViewMode === 'split' ? upcomingEntries : filteredEntries}
                   onOpenFolder={handleOpenFolder}
                   onMore={handleMoreClick}
-                  thinnerCard={readViewMode === 'split' && !!selectedEntry ? true : thinnerCard}
+                  thinnerCard={thinnerCard}
                   checkedCards={checkedCards}
                   onToggleChecked={toggleCardChecked}
                   nodeLineMode={nodeLineMode}
                   isSplitView={readViewMode === 'split' && !!selectedEntry}
+                  selectedEntryId={selectedEntry?.id}
+                  onDeselect={handleCloseModal}
                 />
               )}
             </div>
@@ -1164,14 +1184,14 @@ export const App: React.FC = () => {
                                   const yS = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
                                   const yE = svgH / 2; const dx2 = (370 - 50) / 2;
                                   const isH = hoveredDepId === dep.id;
-                                  const c = getDependencyColor(dep);
+                                  const c = getDependencyColor(dep, checkedCards);
                                   return <path key={dep.id} d={`M 50 ${yS} C ${50 + dx2} ${yS}, ${370 - dx2} ${yE}, 370 ${yE}`} fill="none" stroke={isH ? c : 'rgba(148,163,184,0.18)'} strokeWidth={isH ? 2.5 : 1.2} className="transition-all duration-200" />;
                                 })}
                                 {validDeps.map((dep, idx) => {
                                   const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
                                   const y = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
                                   const isH = hoveredDepId === dep.id;
-                                  const c = getDependencyColor(dep);
+                                  const c = getDependencyColor(dep, checkedCards);
                                   const lbl = dep.title.length > 20 ? dep.title.slice(0, 19) + '…' : dep.title;
                                   return (
                                     <g key={dep.id} className="cursor-pointer" onMouseEnter={() => setHoveredDepId(dep.id)} onMouseLeave={() => setHoveredDepId(null)} onClick={() => navigateToEntry(dep, 'click')}>
@@ -1183,7 +1203,7 @@ export const App: React.FC = () => {
                                 })}
                                 {(() => {
                                   const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                  const y = svgH / 2; const c = getDependencyColor(selectedEntry);
+                                  const y = svgH / 2; const c = getDependencyColor(selectedEntry, checkedCards);
                                   const lbl = selectedEntry.title.length > 12 ? selectedEntry.title.slice(0, 11) + '…' : selectedEntry.title;
                                   return (
                                     <g>
@@ -1355,7 +1375,7 @@ export const App: React.FC = () => {
                             const dx = (xEnd - xStart) / 2;
                             const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
                             const isHovered = hoveredDepId === dep.id;
-                            const depColor = getDependencyColor(dep);
+                            const depColor = getDependencyColor(dep, checkedCards);
 
                             return (
                               <path
@@ -1375,7 +1395,7 @@ export const App: React.FC = () => {
                             const svgH = Math.max(100, N * 36 + 40);
                             const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
                             const x = 50;
-                            const depColor = getDependencyColor(dep);
+                            const depColor = getDependencyColor(dep, checkedCards);
                             const isHovered = hoveredDepId === dep.id;
                             // Truncate title to ~22 chars for the label
                             const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
@@ -1428,7 +1448,7 @@ export const App: React.FC = () => {
                             const svgH = Math.max(100, N * 36 + 40);
                             const x = 370;
                             const y = svgH / 2;
-                            const currentColor = getDependencyColor(selectedEntry);
+                            const currentColor = getDependencyColor(selectedEntry, checkedCards);
                             const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
                             return (
                               <g className="cursor-default">

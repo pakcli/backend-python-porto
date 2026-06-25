@@ -15,6 +15,8 @@ interface TimelineProps {
   onToggleChecked: (id: string) => void;
   nodeLineMode: 'focus' | 'focus-no-offset' | 'all';
   isSplitView?: boolean;
+  selectedEntryId?: string;
+  onDeselect?: () => void;
 }
 
 interface Connection {
@@ -50,13 +52,13 @@ const getMonthYearLabel = (dateStr: string) => {
   return dateStr;
 };
 
-const getDependencyColor = (dep: PortfolioEntry) => {
+const getDependencyColor = (dep: PortfolioEntry, checkedCards: Record<string, boolean>) => {
+  const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+  if (!isDone) return '#ef4444'; // Red for not done
+
+  if (dep.source === 'proj') return '#10b981'; // Green
+  if (dep.source === 'item' || dep.source === 'cert') return '#64748b'; // Gray
   if (dep.source === 'achv') return '#fbbf24'; // Gold
-  if (dep.source === 'item') return '#64748b'; // Slate
-  const skill = (dep.skill || '').toLowerCase();
-  if (skill.includes('q')) return '#06b6d4'; // Cyan
-  if (skill.includes('w')) return '#d946ef'; // Fuchsia
-  if (skill.includes('e')) return '#f97316'; // Orange
   return '#64748b'; // Default Slate
 };
 
@@ -69,10 +71,59 @@ export const Timeline: React.FC<TimelineProps> = ({
   onToggleChecked,
   nodeLineMode,
   isSplitView,
+  selectedEntryId,
+  onDeselect,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [hoverDisabled, setHoverDisabled] = useState(false);
+
+  const handleMoreClick = (entry: PortfolioEntry) => {
+    // Immediately disable hover before any swap starts
+    setHoverDisabled(true);
+    setHoveredCardId(null);
+
+    // Re-enable hover after the swap animation is finished
+    setTimeout(() => {
+      setHoverDisabled(false);
+    }, 500);
+
+    onMore(entry);
+  };
+
+  const handleHeaderClick = (label: string) => {
+    if (onDeselect) {
+      onDeselect();
+    }
+    const scrollTarget = () => {
+      const el = document.getElementById(`separator-${label.replace(/\s+/g, '-')}`);
+      if (el) {
+        let scrollParent = el.parentElement;
+        while (scrollParent && scrollParent !== document.body) {
+          const style = window.getComputedStyle(scrollParent);
+          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            break;
+          }
+          scrollParent = scrollParent.parentElement;
+        }
+        if (scrollParent && scrollParent !== document.body) {
+          const elRect = el.getBoundingClientRect();
+          const parentRect = scrollParent.getBoundingClientRect();
+          const targetScrollTop = scrollParent.scrollTop + (elRect.top - parentRect.top) - (parentRect.height / 2) + (elRect.height / 2);
+          scrollParent.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+        } else {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    };
+
+    // Staggered scroll triggers to follow layout resizing transitions
+    scrollTarget();
+    setTimeout(scrollTarget, 100);
+    setTimeout(scrollTarget, 250);
+    setTimeout(scrollTarget, 400);
+  };
 
   const updateConnections = () => {
     if (!containerRef.current) return;
@@ -151,7 +202,7 @@ export const Timeline: React.FC<TimelineProps> = ({
             fromId: entry.id,
             toId: depEntry.id,
             d,
-            color: getDependencyColor(depEntry),
+            color: getDependencyColor(depEntry, checkedCards),
             xStart,
             yStart,
             xEnd,
@@ -188,7 +239,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       resizeObserver.disconnect();
       window.removeEventListener('scroll', updateConnections, true);
     };
-  }, [entries, thinnerCard]);
+  }, [entries, thinnerCard, selectedEntryId]);
 
   if (entries.length === 0) {
     return (
@@ -204,12 +255,36 @@ export const Timeline: React.FC<TimelineProps> = ({
     );
   }
 
+  // Focus Mode active filtering: show only the selected entry and its dependencies/dependents
+  const isFocusActiveMode = nodeLineMode === 'focus' && !!selectedEntryId;
+  const relatedIds = new Set<string>();
+  if (isFocusActiveMode && selectedEntryId) {
+    relatedIds.add(selectedEntryId);
+    
+    // Find all entries that the selected entry depends on
+    const selectedEntry = entries.find(e => e.id === selectedEntryId);
+    if (selectedEntry && selectedEntry.dependencies) {
+      selectedEntry.dependencies.forEach(depId => relatedIds.add(depId));
+    }
+    
+    // Find all entries that depend on the selected entry
+    entries.forEach(e => {
+      if (e.dependencies && e.dependencies.includes(selectedEntryId)) {
+        relatedIds.add(e.id);
+      }
+    });
+  }
+
+  const visibleEntries = isFocusActiveMode
+    ? entries.filter(e => relatedIds.has(e.id))
+    : entries;
+
   // Group chronologically
   const groups: { label: string; items: PortfolioEntry[] }[] = [];
   let currentLabel = '';
   let currentGroup: PortfolioEntry[] = [];
 
-  entries.forEach((entry) => {
+  visibleEntries.forEach((entry) => {
     const label = getMonthYearLabel(entry.datestart);
     if (label !== currentLabel) {
       if (currentGroup.length > 0) {
@@ -230,7 +305,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     const cardProps = {
       entry,
       onOpenFolder,
-      onMore,
+      onMore: handleMoreClick,
       thinnerCard,
       isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
       onToggleChecked,
@@ -252,7 +327,9 @@ export const Timeline: React.FC<TimelineProps> = ({
     const isOverdue = !isDoneEntry && !!entry.datestart && entry.datestart < todayStr;
 
     // Focus mode visual roles
-    const isFocusActive = nodeLineMode === 'focus' || nodeLineMode === 'focus-no-offset';
+    // Focus Mode (focus) is only active if split view is not open (standalone) and no selected entry is active.
+    // Clean Mode (focus-no-offset) remains active (preserving hover dimming).
+    const isFocusActive = nodeLineMode === 'focus-no-offset' || (nodeLineMode === 'focus' && !isSplitView && !selectedEntryId);
     const isFocused = isFocusActive && hoveredCardId === entry.id;
     const isDependencyOfFocused = isFocusActive && !!hoveredCardId &&
       connections.some(c => c.fromId === hoveredCardId && c.toId === entry.id);
@@ -275,18 +352,18 @@ export const Timeline: React.FC<TimelineProps> = ({
         wrapperStyle.opacity = 1;
         wrapperStyle.zIndex = 20;
       } else if (isDependencyOfFocused) {
-        // Dependencies: shifted right to "stack" below and right of focused
-        wrapperStyle.transform = nodeLineMode === 'focus' ? 'translateX(32px)' : 'translateX(0px)';
+        // Aligned to left with focused card (like last time)
+        wrapperStyle.transform = 'translateX(0px)';
         wrapperStyle.opacity = 1;
         wrapperStyle.zIndex = 15;
       } else if (isDependentOfFocused) {
-        // "Boss" card that needs the hovered dependency — stays still, no offset
+        // Aligned to left with focused card (like last time)
         wrapperStyle.transform = 'translateX(0px)';
         wrapperStyle.opacity = 1;
         wrapperStyle.zIndex = 14;
       } else {
         // Unrelated: pushed far right and dimmed
-        wrapperStyle.transform = nodeLineMode === 'focus' ? 'translateX(72px)' : 'translateX(0px)';
+        wrapperStyle.transform = nodeLineMode === 'focus' ? 'translateX(80px)' : 'translateX(0px)';
         wrapperStyle.opacity = 0.18;
         wrapperStyle.filter = 'grayscale(0.5)';
         wrapperStyle.zIndex = 1;
@@ -298,8 +375,16 @@ export const Timeline: React.FC<TimelineProps> = ({
         key={entry.id}
         id={`card-${entry.id}`}
         style={wrapperStyle}
-        onMouseEnter={() => setHoveredCardId(entry.id)}
-        onMouseLeave={() => setHoveredCardId(null)}
+        onMouseEnter={() => {
+          if (!hoverDisabled) {
+            setHoveredCardId(entry.id);
+          }
+        }}
+        onMouseLeave={() => {
+          if (!hoverDisabled) {
+            setHoveredCardId(null);
+          }
+        }}
       >
         {/* Dependency role indicator ring (focus mode only) */}
         {isDependencyOfFocused && (
@@ -332,20 +417,37 @@ export const Timeline: React.FC<TimelineProps> = ({
   });
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-8 pb-16 relative">
+    <div
+      ref={containerRef}
+      className="flex flex-col gap-8 pb-16 relative"
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        const clickedCard = target.closest('[id^="card-"]');
+        if (!clickedCard && onDeselect) {
+          onDeselect();
+        }
+      }}
+    >
       {/* SVG Connections Overlay */}
       {connections.length > 0 && (
-        <svg className="absolute inset-0 pointer-events-none w-full h-full z-10 overflow-visible">
+        <svg className="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
           {connections.map((conn) => {
-            const isVisible = visibleConnections.some(c => c.id === conn.id);
+            let opacity = 0.1;
             const isRelated = hoveredCardId
               ? conn.fromId === hoveredCardId || conn.toId === hoveredCardId
               : false;
 
-            // In "all" mode: dim unrelated when hovering; in "focus" mode: hide unless related
-            const opacity = (nodeLineMode === 'focus' || nodeLineMode === 'focus-no-offset')
-              ? (isVisible ? 0.7 : 0)
-              : (hoveredCardId ? (isRelated ? 0.75 : 0.08) : 0.1);
+            if (nodeLineMode === 'focus' && isSplitView && selectedEntryId) {
+              const isRelatedToSelected = conn.fromId === selectedEntryId || conn.toId === selectedEntryId;
+              opacity = isRelatedToSelected ? 0.7 : 0;
+            } else {
+              const isVisible = visibleConnections.some(c => c.id === conn.id);
+
+              // In "all" mode: dim unrelated when hovering; in "focus" mode: hide unless related
+              opacity = (nodeLineMode === 'focus' || nodeLineMode === 'focus-no-offset')
+                ? (isVisible ? 0.7 : 0)
+                : (hoveredCardId ? (isRelated ? 0.75 : 0.08) : 0.1);
+            }
 
             return (
               <g key={conn.id} style={{ transition: 'opacity 0.25s ease' }} opacity={opacity}>
@@ -383,16 +485,20 @@ export const Timeline: React.FC<TimelineProps> = ({
       )}
 
       {groups.map((group, groupIdx) => (
-        <div key={groupIdx} className="flex flex-col gap-4">
+        <div key={groupIdx} className="flex flex-col gap-4 animate-fadeIn">
           {/* Timeline separator line and date label */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-black dark:text-slate-400 text-slate-500 bg-slate-100 dark:bg-slate-900 border dark:border-slate-800 border-slate-200 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm font-dota">
+          <div
+            id={`separator-${group.label.replace(/\s+/g, '-')}`}
+            className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity select-none group/sep"
+            onClick={() => handleHeaderClick(group.label)}
+            title={isFocusActiveMode ? "Click to exit Focus and jump here" : "Jump to here"}
+          >
+            <span className="text-xs font-black dark:text-slate-400 text-slate-500 bg-slate-100 dark:bg-slate-900 border dark:border-slate-800 border-slate-200 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm font-dota group-hover/sep:border-slate-500/50 transition-colors">
               {group.label}
             </span>
-            <div className="flex-1 h-[1px] dark:bg-slate-850 bg-slate-200" style={{ background: 'linear-gradient(90deg, rgba(148, 163, 184, 0.2) 0%, rgba(148, 163, 184, 0) 100%)' }} />
+            <div className="flex-1 h-[1px] dark:bg-slate-850 bg-slate-200 group-hover/sep:bg-slate-550/45 transition-colors" style={{ background: 'linear-gradient(90deg, rgba(148, 163, 184, 0.2) 0%, rgba(148, 163, 184, 0) 100%)' }} />
           </div>
 
-          {/* Cards List in this Group */}
           <div className={
             isSplitView
               ? "grid grid-cols-2 gap-4"

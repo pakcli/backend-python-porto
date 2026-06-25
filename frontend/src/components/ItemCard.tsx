@@ -38,7 +38,7 @@ export const ItemCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thi
     <div 
       onClick={() => onMore(entry)}
       className={`bg-[#12161b]/95 border border-slate-800 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
-        thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'aspect-[4/3] p-5'
+        thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'h-[384px] p-5'
       }`}
     >
       {/* Decorative icon background */}
