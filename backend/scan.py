@@ -55,6 +55,8 @@ def scan_directory(watch_dir):
                 skill = post.get("skill", "")
                 if skill:
                     skill = str(skill).strip().lower()
+                    if len(skill) == 1 and skill in ["q", "w", "e"]:
+                        skill = skill * 3
                     if not SKILL_PATTERN.match(skill):
                         print(f"Warning: Invalid skill combination '{skill}' in {index_path}. Treating as grey.")
                         skill = ""

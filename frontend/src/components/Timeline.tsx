@@ -362,8 +362,8 @@ export const Timeline: React.FC<TimelineProps> = ({
         wrapperStyle.opacity = 1;
         wrapperStyle.zIndex = 14;
       } else {
-        // Unrelated: pushed far right and dimmed
-        wrapperStyle.transform = nodeLineMode === 'focus' ? 'translateX(80px)' : 'translateX(0px)';
+        // Unrelated: dimmed (no offset slide translation, same as clean focus mode)
+        wrapperStyle.transform = 'translateX(0px)';
         wrapperStyle.opacity = 0.18;
         wrapperStyle.filter = 'grayscale(0.5)';
         wrapperStyle.zIndex = 1;
@@ -374,6 +374,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       <div
         key={entry.id}
         id={`card-${entry.id}`}
+        className="max-w-[512px] w-full mx-auto md:mx-0"
         style={wrapperStyle}
         onMouseEnter={() => {
           if (!hoverDisabled) {
@@ -501,8 +502,8 @@ export const Timeline: React.FC<TimelineProps> = ({
 
           <div className={
             isSplitView
-              ? "grid grid-cols-2 gap-4"
-              : "grid grid-cols-1 min-[540px]:grid-cols-[repeat(auto-fill,512px)] gap-6"
+              ? "grid grid-cols-[repeat(auto-fill,minmax(min(100%,512px),512px))] gap-4"
+              : "grid grid-cols-[repeat(auto-fill,minmax(min(100%,512px),512px))] gap-6"
           }>
             {group.items.map(renderCard)}
           </div>

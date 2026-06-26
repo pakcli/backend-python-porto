@@ -43,6 +43,19 @@ const formatDate = (dateStr: string) => {
   return dateStr;
 };
 
+const SPELL_NAMES: Record<string, { formal: string; dota: string }> = {
+  qqq: { formal: 'Sistem Core', dota: 'Cold Snap' },
+  qqw: { formal: 'Sistem Scripting', dota: 'Ghost Walk' },
+  eqq: { formal: 'Sistem Interface', dota: 'Ice Wall' },
+  qww: { formal: 'Program Logic', dota: 'Tornado' },
+  eqw: { formal: 'Full-Stack Synthesis', dota: 'Deafening Blast' },
+  eeq: { formal: 'Visual Systems', dota: 'Forge Spirit' },
+  www: { formal: 'Program Core', dota: 'EMP' },
+  eww: { formal: 'Program Interface', dota: 'Alacrity' },
+  eew: { formal: 'Creative Program', dota: 'Chaos Meteor' },
+  eee: { formal: 'Media Core', dota: 'Sun Strike' }
+};
+
 const FlippableCard: React.FC<{
   isRevealed: boolean;
   thinnerCard: boolean;
@@ -443,6 +456,17 @@ export const App: React.FC = () => {
     setActiveCombo(combo);
   };
 
+  const handleSelectCombo = (combo: string) => {
+    if (activeCombo === combo) {
+      clearOrbs();
+    } else {
+      if (soundEnabled) sfx.playInvoke();
+      const upperOrbs = combo.toUpperCase().split('') as OrbType[];
+      setOrbs(upperOrbs);
+      setActiveCombo(combo);
+    }
+  };
+
   // Sync external sfx state and volume
   useEffect(() => {
     sfx.toggle(soundEnabled);
@@ -630,7 +654,43 @@ export const App: React.FC = () => {
     });
   };
 
+  // Filter entries for combination counts (ignoring activeCombo filter so counts don't zero out)
+  const getEntriesForComboCounts = () => {
+    return entries.filter(entry => {
+      // 1. Filter by category Mode
+      if (mode === 'proj' && entry.source !== 'proj') {
+        return false;
+      }
+      if (mode === 'items') {
+        const matchesSub =
+          (entry.source === 'cert' && subFilters.cert) ||
+          (entry.source === 'achv' && subFilters.achv) ||
+          (entry.source === 'item' && subFilters.item);
+        if (!matchesSub) return false;
+      }
+
+      // 2. Filter by Regex search query
+      if (searchQuery.trim() !== '') {
+        try {
+          const regex = new RegExp(searchQuery, 'i');
+          const titleMatch = regex.test(entry.title);
+          const bodyMatch = regex.test(entry.body);
+          const sourceMatch = regex.test(entry.source);
+          const skillMatch = regex.test(entry.skill || '');
+          if (!titleMatch && !bodyMatch && !sourceMatch && !skillMatch) {
+            return false;
+          }
+        } catch (e) {
+          // If regex fails to compile, ignore filtering
+        }
+      }
+
+      return true;
+    });
+  };
+
   const entriesForStats = getEntriesForStats();
+  const entriesForComboCounts = getEntriesForComboCounts();
 
   // Filter entries incorporating the interactive stat card override
   const getFilteredEntries = () => {
@@ -714,14 +774,21 @@ export const App: React.FC = () => {
 
   const getComboDisplayName = (combo: string) => {
     if (!combo) return '';
-    if (!formalMode) return `Combo ${combo.toUpperCase()}`;
-    const names = combo.toLowerCase().split('').map(char => {
-      if (char === 'q') return 'Sistem';
-      if (char === 'w') return 'Program';
-      if (char === 'e') return 'Media / Visual';
-      return char;
-    });
-    return `Combo ${names.join(' + ')}`;
+    const sortedKey = combo.toLowerCase().split('').sort().join('');
+    const match = SPELL_NAMES[sortedKey];
+    const name = match ? (formalMode ? match.formal : match.dota) : 'Unknown Combo';
+    
+    if (!formalMode) {
+      return `${name} (Combo ${combo.toUpperCase()})`;
+    } else {
+      const names = combo.toLowerCase().split('').map(char => {
+        if (char === 'q') return 'Sistem';
+        if (char === 'w') return 'Program';
+        if (char === 'e') return 'Media';
+        return char;
+      });
+      return `${name} (Combo ${names.join(' + ')})`;
+    }
   };
 
   const navigateToEntry = (entry: PortfolioEntry | null, actionType: 'click' | 'prev-next' | 'history' = 'click') => {
@@ -983,6 +1050,8 @@ export const App: React.FC = () => {
             setDreamingIncludePast={setDreamingIncludePast}
             reverseTimeline={reverseTimeline}
             setReverseTimeline={setReverseTimeline}
+            entriesForStats={entriesForComboCounts}
+            onSelectCombo={handleSelectCombo}
           />
         </aside>
 
@@ -1049,11 +1118,11 @@ export const App: React.FC = () => {
           </div>
 
           {/* Split view: timeline + detail panel side by side */}
-          <div className="flex gap-4 min-h-0 flex-1 items-stretch">
+          <div className="flex gap-4 min-h-0 flex-1 items-stretch overflow-hidden">
             {/* Timeline (shrinks when split panel is open) */}
             <div className={`transition-all duration-300 min-w-0 h-full overflow-y-auto pr-1 scrollbar-thin ${
               readViewMode === 'split' && selectedEntry
-                ? splitPanelSize === '25' ? 'w-3/4 flex-none' : 'w-1/2 flex-1'
+                ? splitPanelSize === '25' ? 'flex-1 min-w-0' : 'w-1/2 flex-1'
                 : 'flex-1'
             }`}>
               {isDreamingOpen && readViewMode === 'split' && upcomingEntries.length === 0 ? (
@@ -1094,8 +1163,8 @@ export const App: React.FC = () => {
             {/* Split view detail panel */}
             {readViewMode === 'split' && selectedEntry && (
               isEditingInline ? (
-                <div className={`min-w-0 h-full flex flex-col min-h-0 animate-fadeIn transition-all duration-300 ${
-                  splitPanelSize === '25' ? 'w-1/4 flex-none' : 'w-1/2 flex-1'
+                <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden animate-fadeIn transition-all duration-300 ${
+                  splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'
                 }`}>
                   <AddInstanceModal
                     isOpen={true}
@@ -1125,7 +1194,7 @@ export const App: React.FC = () => {
                 const depIds = selectedEntry.dependencies || [];
                 const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
                 return (
-                  <div className={`min-w-0 h-full flex flex-col min-h-0 transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 flex-none' : 'w-1/2 flex-1'}`}>
+                  <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'}`}>
                     <div className="bg-[#12161b] border border-slate-800 rounded-xl flex flex-col shadow-2xl overflow-hidden h-full">
                       {/* Split Panel Header */}
                       <div className="p-4 border-b border-slate-800 bg-[#15191e] flex items-start justify-between gap-3 shrink-0">
@@ -1777,7 +1846,7 @@ export const App: React.FC = () => {
                           </div>
 
                           {/* Cards List in this year section */}
-                          <div className="grid grid-cols-1 min-[640px]:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
+                          <div className="grid grid-cols-1 min-[640px]:grid-cols-2 xl:grid-cols-3 min-[1650px]:grid-cols-[repeat(auto-fill,minmax(min(100%,480px),1fr))] gap-6 w-full">
                             {yearEntries.map((entry) => {
                               const cardProps = {
                                 key: `dream_${entry.id}`,

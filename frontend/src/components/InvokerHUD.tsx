@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Volume2, VolumeX, Sparkles, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { OrbType, DashboardStats } from '../types';
+import { OrbType, DashboardStats, PortfolioEntry } from '../types';
 
 interface HUDProps {
   mode: 'all' | 'proj' | 'items';
@@ -40,6 +40,8 @@ interface HUDProps {
   setDreamingIncludePast: (val: boolean) => void;
   reverseTimeline: boolean;
   setReverseTimeline: (val: boolean) => void;
+  entriesForStats: PortfolioEntry[];
+  onSelectCombo: (combo: string) => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -80,8 +82,11 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setDreamingIncludePast,
   reverseTimeline,
   setReverseTimeline,
+  entriesForStats,
+  onSelectCombo,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
+  const [combosExpanded, setCombosExpanded] = useState(false);
 
   const getOrbShadowAndBorder = (orb: OrbType) => {
     switch (orb) {
@@ -350,6 +355,83 @@ export const InvokerHUD: React.FC<HUDProps> = ({
               <span>Space: Clear Queue</span>
               <kbd className="px-1.5 bg-slate-800 rounded text-[9px]">Space</kbd>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3b. Orb Combinations Accordion */}
+      <div className="p-3 bg-slate-950/40 border border-slate-800/80 rounded-lg">
+        <button
+          onClick={() => setCombosExpanded(!combosExpanded)}
+          className="w-full flex items-center justify-between text-[10px] text-slate-400 font-bold focus:outline-none"
+        >
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={14} className="text-emerald-500 animate-pulse" />
+            <span>Spell Combinations</span>
+          </div>
+          {combosExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {combosExpanded && (
+          <div className="flex flex-col gap-2 mt-3 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
+            {TEN_COMBINATIONS.map((combo) => {
+              // Count matching entries based on sorted skill orbs
+              const sortedCombo = combo.split('').sort().join('');
+              const count = entriesForStats.filter(e => {
+                if (!e.skill) return false;
+                const sortedSkill = e.skill.toLowerCase().split('').sort().join('');
+                return sortedSkill === sortedCombo;
+              }).length;
+
+              const displayName = getComboSpellName(combo, formalMode);
+              const subName = getComboSubName(combo, formalMode);
+              const orbColors = getSortedOrbColorsForCombo(combo);
+              
+              return (
+                <div
+                  key={combo}
+                  onClick={() => onSelectCombo(combo)}
+                  className={`grid grid-cols-[auto_1fr_auto] gap-x-2.5 gap-y-0.5 items-center p-2 rounded bg-slate-950/60 border hover:bg-slate-900 border-slate-850 hover:border-slate-700/60 cursor-pointer transition-all ${
+                    activeCombo === combo ? 'border-emerald-500/50 bg-emerald-950/20' : 'border-slate-800/30'
+                  }`}
+                >
+                  {/* Row 1, Col 1: Small Balls */}
+                  <div className="flex gap-0.5 justify-center shrink-0">
+                    {orbColors.map((color, i) => (
+                      <div
+                        key={i}
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Row 1, Col 2: Main Name */}
+                  <span className="text-[11px] font-black text-slate-200 tracking-wide truncate leading-tight">
+                    {displayName}
+                  </span>
+
+                  {/* Col 3: Count (Spans both rows) */}
+                  <div className="row-span-2 flex items-center justify-center pl-1">
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded leading-none ${
+                      count > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-900 text-slate-650 border border-slate-800/50'
+                    }`}>
+                      {count}
+                    </span>
+                  </div>
+
+                  {/* Row 2, Col 1: Small spaced letters */}
+                  <div className="text-[6px] text-slate-500 font-extrabold tracking-[0.1em] uppercase text-center w-full whitespace-nowrap leading-none">
+                    {combo.split('').join(' ')}
+                  </div>
+
+                  {/* Row 2, Col 2: Sub Name */}
+                  <span className="text-[9px] text-slate-500 font-bold truncate leading-none">
+                    {subName}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -794,6 +876,87 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       </div>
     </div>
   );
+};
+
+const TEN_COMBINATIONS = [
+  'qqq',
+  'qqw',
+  'qqe',
+  'www',
+  'qww',
+  'wwe',
+  'eee',
+  'qee',
+  'wee',
+  'qwe'
+];
+
+const SPELL_NAMES: Record<string, { formal: string; dota: string }> = {
+  qqq: { formal: 'Sistem Core', dota: 'Cold Snap' },
+  qqw: { formal: 'Sistem Scripting', dota: 'Ghost Walk' },
+  eqq: { formal: 'Sistem Interface', dota: 'Ice Wall' },
+  qww: { formal: 'Program Logic', dota: 'Tornado' },
+  eqw: { formal: 'Full-Stack Synthesis', dota: 'Deafening Blast' },
+  eeq: { formal: 'Visual Systems', dota: 'Forge Spirit' },
+  www: { formal: 'Program Core', dota: 'EMP' },
+  eww: { formal: 'Program Interface', dota: 'Alacrity' },
+  eew: { formal: 'Creative Program', dota: 'Chaos Meteor' },
+  eee: { formal: 'Media Core', dota: 'Sun Strike' }
+};
+
+const getComboSpellName = (combo: string, formalMode: boolean) => {
+  const sortedKey = combo.toLowerCase().split('').sort().join('');
+  const match = SPELL_NAMES[sortedKey];
+  if (!match) return combo.toUpperCase();
+  return formalMode ? match.formal : match.dota;
+};
+
+const getSortedOrbColorsForCombo = (combo: string) => {
+  const colors: Record<string, string> = {
+    q: '#00d0ff', // Quas Blue
+    w: '#d000ff', // Wex Purple
+    e: '#ff6a00', // Exort Orange
+  };
+  const chars = combo.toLowerCase().split('');
+  
+  // Count occurrences
+  const counts: Record<string, number> = { q: 0, w: 0, e: 0 };
+  for (const char of chars) {
+    if (counts[char] !== undefined) counts[char]++;
+  }
+  
+  // Find dominant character (count >= 2)
+  let dominantChar: string | null = null;
+  for (const char of ['q', 'w', 'e']) {
+    if (counts[char] >= 2) {
+      dominantChar = char;
+      break;
+    }
+  }
+  
+  let orderedChars: string[] = [];
+  if (dominantChar) {
+    const doms = chars.filter(c => c === dominantChar);
+    const nonDoms = chars.filter(c => c !== dominantChar);
+    orderedChars = [...doms, ...nonDoms];
+  } else {
+    // If no dominant one, use blue ('q') first
+    const nonQ = chars.filter(c => c !== 'q');
+    orderedChars = ['q', ...nonQ];
+  }
+  
+  return orderedChars.map(c => colors[c]);
+};
+
+const getComboSubName = (combo: string, formalMode: boolean) => {
+  const chars = combo.toLowerCase().split('');
+  const names = chars.map(char => {
+    if (char === 'q') return formalMode ? 'Sistem' : 'Quas';
+    if (char === 'w') return formalMode ? 'Program' : 'Wex';
+    if (char === 'e') return formalMode ? 'Media' : 'Exort';
+    return char;
+  });
+  return names.join(' + ');
 };
 
 export default InvokerHUD;

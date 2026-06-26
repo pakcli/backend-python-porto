@@ -24,10 +24,37 @@ const getOrbColors = (skillStr: string | undefined) => {
     return [defaultColor, defaultColor, defaultColor];
   }
   const chars = skillStr.toLowerCase().split('');
+  
+  // Count occurrences
+  const counts: Record<string, number> = { q: 0, w: 0, e: 0 };
+  for (const char of chars) {
+    if (counts[char] !== undefined) counts[char]++;
+  }
+  
+  // Find dominant character (count >= 2)
+  let dominantChar: string | null = null;
+  for (const char of ['q', 'w', 'e']) {
+    if (counts[char] >= 2) {
+      dominantChar = char;
+      break;
+    }
+  }
+  
+  let orderedChars: string[] = [];
+  if (dominantChar) {
+    const doms = chars.filter(c => c === dominantChar);
+    const nonDoms = chars.filter(c => c !== dominantChar);
+    orderedChars = [...doms, ...nonDoms];
+  } else {
+    // If no dominant one, use blue ('q') first
+    const nonQ = chars.filter(c => c !== 'q');
+    orderedChars = ['q', ...nonQ];
+  }
+  
   return [
-    colors[chars[0]] || defaultColor,
-    colors[chars[1]] || defaultColor,
-    colors[chars[2]] || defaultColor,
+    colors[orderedChars[0]] || defaultColor,
+    colors[orderedChars[1]] || defaultColor,
+    colors[orderedChars[2]] || defaultColor,
   ];
 };
 

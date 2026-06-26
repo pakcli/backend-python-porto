@@ -56,6 +56,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dependencies, setDependencies] = useState<string[]>([]);
   const [depQuery, setDepQuery] = useState('');
+  const [targetParent, setTargetParent] = useState<string>('');
+  const [originalTargetParent, setOriginalTargetParent] = useState<string>('');
+  const [parentQuery, setParentQuery] = useState('');
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
@@ -90,6 +93,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     setShowDeleteConfirm(false);
     setDependencies([]);
     setDepQuery('');
+    setTargetParent('');
+    setOriginalTargetParent('');
+    setParentQuery('');
     setPendingRename(null);
   };
 
@@ -221,6 +227,17 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
       
       setDependencies(editEntry.dependencies || []);
       setDepQuery('');
+      
+      // Populate targetParent from existing entries (is any card listing editEntry.id as dependency?)
+      const parent = entries.find(e => e.dependencies && e.dependencies.includes(editEntry.id));
+      if (parent) {
+        setTargetParent(parent.id);
+        setOriginalTargetParent(parent.id);
+      } else {
+        setTargetParent('');
+        setOriginalTargetParent('');
+      }
+      setParentQuery('');
       
       setIsFolderNameCustom(true);
       
@@ -411,6 +428,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
       return;
     }
 
+    // Validate skill length
+    const skillVal = skill.trim().toLowerCase();
+    if (skillVal.length === 2) {
+      alert('Tolong isi 1 atau 3 letter');
+      return;
+    }
+
     // Format frontmatter and body
     let frontmatter = `---\ntitle: ${title.trim()}\ndatestart: ${dateStart.trim()}\ndone: ${done}\n`;
     if (dependencies.length > 0) {
@@ -419,8 +443,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     if (dateEnd.trim()) {
       frontmatter += `dateend: ${dateEnd.trim()}\n`;
     }
-    if (skill.trim()) {
-      frontmatter += `skill: ${skill.trim().toLowerCase()}\n`;
+    if (skillVal) {
+      const finalSkill = skillVal.length === 1 ? skillVal.repeat(3) : skillVal;
+      frontmatter += `skill: ${finalSkill}\n`;
     }
     if (github.trim()) {
       frontmatter += `github: ${github.trim()}\n`;
@@ -434,6 +459,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     formData.append('category', category);
     formData.append('folderName', folderName.trim());
     formData.append('content', frontmatter);
+    
+    if (targetParent) {
+      formData.append('targetParent', targetParent);
+    }
+    if (originalTargetParent) {
+      formData.append('originalTargetParent', originalTargetParent);
+    }
     
     // Add all uploaded files
     selectedFiles.forEach(file => {
@@ -566,61 +598,77 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                 Select the category of the new portfolio instance to create:
               </p>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid gap-4 ${isInline ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {/* Project */}
                 <div
                   onClick={() => handleSelectCategory('proj')}
-                  className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-blue-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+                  className={`border border-slate-800/80 bg-[#15191e] hover:border-blue-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] flex cursor-pointer transition-all group rounded-lg ${
+                    isInline ? 'flex-row items-center justify-start text-left p-3.5 gap-4' : 'flex-col items-center justify-center text-center p-5'
+                  }`}
                 >
-                  <Folder className="text-blue-500 mb-3" size={32} />
-                  <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-blue-400 transition-colors">
-                    Project
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1 font-medium">
-                    Code repository or web app
-                  </span>
+                  <Folder className="text-blue-500 shrink-0" size={isInline ? 24 : 32} />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-blue-400 transition-colors">
+                      Project
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">
+                      Code repository or web app
+                    </span>
+                  </div>
                 </div>
 
                 {/* Certification */}
                 <div
                   onClick={() => handleSelectCategory('cert')}
-                  className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-fuchsia-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(217,70,239,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+                  className={`border border-slate-800/80 bg-[#15191e] hover:border-fuchsia-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(217,70,239,0.15)] flex cursor-pointer transition-all group rounded-lg ${
+                    isInline ? 'flex-row items-center justify-start text-left p-3.5 gap-4' : 'flex-col items-center justify-center text-center p-5'
+                  }`}
                 >
-                  <Award className="text-fuchsia-500 mb-3" size={32} />
-                  <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-fuchsia-400 transition-colors">
-                    Certification
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1 font-medium">
-                    Course license or certificate
-                  </span>
+                  <Award className="text-fuchsia-500 shrink-0" size={isInline ? 24 : 32} />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-fuchsia-400 transition-colors">
+                      Certification
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">
+                      Course license or certificate
+                    </span>
+                  </div>
                 </div>
 
                 {/* Item */}
                 <div
                   onClick={() => handleSelectCategory('item')}
-                  className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-slate-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(148,163,184,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+                  className={`border border-slate-800/80 bg-[#15191e] hover:border-slate-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(148,163,184,0.15)] flex cursor-pointer transition-all group rounded-lg ${
+                    isInline ? 'flex-row items-center justify-start text-left p-3.5 gap-4' : 'flex-col items-center justify-center text-center p-5'
+                  }`}
                 >
-                  <Cpu className="text-slate-400 mb-3" size={32} />
-                  <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-slate-350 transition-colors">
-                    Item / Hardware
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1 font-medium">
-                    Physical node or component
-                  </span>
+                  <Cpu className="text-slate-400 shrink-0" size={isInline ? 24 : 32} />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-slate-350 transition-colors">
+                      Item / Hardware
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">
+                      Physical node or component
+                    </span>
+                  </div>
                 </div>
 
                 {/* Achievement */}
                 <div
                   onClick={() => handleSelectCategory('achv')}
-                  className="p-5 rounded-lg border border-slate-800/80 bg-[#15191e] hover:border-amber-450/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.15)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+                  className={`border border-slate-800/80 bg-[#15191e] hover:border-amber-450/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.15)] flex cursor-pointer transition-all group rounded-lg ${
+                    isInline ? 'flex-row items-center justify-start text-left p-3.5 gap-4' : 'flex-col items-center justify-center text-center p-5'
+                  }`}
                 >
-                  <Trophy className="text-gold mb-3" size={32} />
-                  <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-amber-400 transition-colors">
-                    Achievement
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1 font-medium">
-                    Awards, hacks, and trophies
-                  </span>
+                  <Trophy className="text-gold shrink-0" size={isInline ? 24 : 32} />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-amber-400 transition-colors">
+                      Achievement
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">
+                      Awards, hacks, and trophies
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -701,7 +749,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
               const hasNext = currentIdx < filteredEntries.length - 1;
 
               return (
-                <div className="px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0 select-none">
+                <div className={`px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0 select-none ${
+                  isInline ? 'flex-wrap justify-center gap-y-1.5' : ''
+                }`}>
                   {/* Left: File Explorer Back/Forward History */}
                   <div className="flex items-center gap-1">
                     <button
@@ -819,7 +869,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                         const isMainable = /\.(png|jpg|jpeg|pdf)$/i.test(filename);
                         const isMain = filename === thumbnailFilename;
                         return (
-                          <div key={`existing-${filename}`} className="flex items-center justify-between py-1 px-2 bg-slate-900 border border-slate-800/60 rounded font-sans">
+                          <div key={`existing-${filename}`} className={`flex bg-slate-900 border border-slate-800/60 rounded font-sans p-2 ${
+                            isInline ? 'flex-col items-stretch gap-2' : 'items-center justify-between py-1 px-2'
+                          }`}>
                             <div className="flex items-center gap-2 truncate flex-1 min-w-0">
                               <FileText size={14} className="text-cyan-400 shrink-0" />
                               <span className="font-mono text-[11px] text-slate-300 truncate" title={filename}>
@@ -832,7 +884,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                               )}
                             </div>
                             
-                            <div className="flex items-center gap-3 shrink-0 ml-4 font-sans">
+                            <div className={`flex items-center gap-3 shrink-0 font-sans ${isInline ? 'flex-wrap ml-0 mt-1 bg-slate-950/40 p-1.5 rounded border border-slate-800/30 justify-between' : 'ml-4'}`}>
                               {(() => {
                                 const parsed = parseFilenameProps(filename);
                                 return (
@@ -920,7 +972,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                       const isMainable = /\.(png|jpg|jpeg|pdf)$/i.test(file.name);
                       const isMain = file.name === thumbnailFilename;
                       return (
-                        <div key={`new-${file.name}-${idx}`} className="flex items-center justify-between py-1 px-2 bg-cyan-950/20 border border-cyan-900/30 rounded font-sans">
+                        <div key={`new-${file.name}-${idx}`} className={`flex bg-cyan-950/20 border border-cyan-900/30 rounded font-sans p-2 ${
+                          isInline ? 'flex-col items-stretch gap-2' : 'items-center justify-between py-1 px-2'
+                        }`}>
                           <div className="flex items-center gap-2 truncate flex-1 min-w-0 font-sans">
                             <FileText size={14} className="text-emerald-400 shrink-0 font-sans" />
                             <span className="font-mono text-[11px] text-slate-200 truncate" title={file.name}>
@@ -933,7 +987,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                             )}
                           </div>
                           
-                          <div className="flex items-center gap-3 shrink-0 ml-4 font-sans">
+                          <div className={`flex items-center gap-3 shrink-0 font-sans ${isInline ? 'flex-wrap ml-0 mt-1 bg-slate-950/40 p-1.5 rounded border border-slate-800/30 justify-between' : 'ml-4'}`}>
                             {(() => {
                               const parsed = parseFilenameProps(file.name);
                               return (
@@ -1046,10 +1100,10 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
               )}
 
               {/* Form Metadata Fields */}
-              <div className="grid grid-cols-2 gap-3.5 text-xs font-semibold">
+              <div className={`grid gap-3.5 text-xs font-semibold ${isInline ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 
                 {/* Title */}
-                <div className="flex flex-col gap-1 col-span-2">
+                <div className={`flex flex-col gap-1 ${isInline ? '' : 'col-span-2'}`}>
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] uppercase tracking-wider text-slate-500">Instance Title *</label>
                     {(() => {
@@ -1127,7 +1181,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                 </div>
 
                 {/* LinkedIn Link (Frontmatter field) */}
-                <div className="flex flex-col gap-1 col-span-2">
+                <div className={`flex flex-col gap-1 ${isInline ? '' : 'col-span-2'}`}>
                   <label className="text-[10px] uppercase tracking-wider text-slate-500">LinkedIn Link</label>
                   <input
                     type="url"
@@ -1139,7 +1193,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                 </div>
 
                 {/* Dependencies Selection */}
-                <div className="flex flex-col gap-1 col-span-2 relative">
+                <div className={`flex flex-col gap-1 relative ${isInline ? '' : 'col-span-2'}`}>
                   <label className="text-[10px] uppercase tracking-wider text-slate-500">Dependencies (Required Instances)</label>
                   
                   {/* Selected Dependencies Badges */}
@@ -1218,8 +1272,92 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                   </div>
                 </div>
 
+                {/* Parent Instance Selection */}
+                <div className={`flex flex-col gap-1 relative ${isInline ? '' : 'col-span-2'}`}>
+                  <label className="text-[10px] uppercase tracking-wider text-slate-500">
+                    Parent Instance (Include this as dependency of)
+                  </label>
+                  
+                  {/* Selected Parent Badge */}
+                  {targetParent && (
+                    <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-slate-950/40 border border-slate-800 rounded-lg min-h-[38px] items-center">
+                      {(() => {
+                        const parentEntry = entries.find(e => e.id === targetParent);
+                        const parentTitle = parentEntry ? parentEntry.title : targetParent;
+                        return (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#15191e] border border-slate-750 text-slate-350 text-[10px] font-bold uppercase tracking-wider">
+                            <span>{parentTitle}</span>
+                            <button
+                              type="button"
+                              onClick={() => setTargetParent('')}
+                              className="text-red-500 hover:text-red-400 font-bold ml-1 text-xs select-none"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Suggestion Autocomplete Search Input for Parent */}
+                  {!targetParent && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={parentQuery}
+                        onChange={(e) => setParentQuery(e.target.value)}
+                        placeholder="Type to search parent cards..."
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none placeholder-slate-650 text-xs"
+                      />
+                      
+                      {/* Parent Suggestions list */}
+                      {parentQuery.trim() !== '' && (
+                        <div className="absolute left-0 right-0 mt-1 max-h-[140px] overflow-y-auto bg-[#15191e] border border-slate-750 rounded-lg shadow-xl z-50 select-none">
+                          {(() => {
+                            const queryLower = parentQuery.toLowerCase();
+                            const currentId = editEntry ? editEntry.id : '';
+                            const filtered = entries.filter(e => {
+                              // 1. Exclude itself
+                              if (e.id === currentId) return false;
+                              // 2. Exclude anything already in this card's own dependencies to avoid circular dependencies
+                              if (dependencies.includes(e.id)) return false;
+                              // 3. Match query
+                              return e.title.toLowerCase().includes(queryLower) || e.id.toLowerCase().includes(queryLower);
+                            });
+
+                            if (filtered.length === 0) {
+                              return (
+                                <div className="p-2.5 text-xs text-slate-500 italic text-center">
+                                  No matching instances found
+                                </div>
+                              );
+                            }
+
+                            return filtered.map(e => (
+                              <div
+                                key={e.id}
+                                onClick={() => {
+                                  setTargetParent(e.id);
+                                  setParentQuery('');
+                                }}
+                                className="p-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer border-b border-slate-800 last:border-0 flex justify-between items-center"
+                              >
+                                <span>{e.title}</span>
+                                <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider">
+                                  {e.source}
+                                </span>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Done Checkbox */}
-                <div className="flex items-center gap-2 py-1 col-span-2">
+                <div className={`flex items-center gap-2 py-1 ${isInline ? '' : 'col-span-2'}`}>
                   <label className="flex items-center gap-2.5 text-xs font-semibold cursor-pointer text-slate-400 hover:text-slate-200 select-none">
                     <input
                       type="checkbox"
@@ -1248,20 +1386,22 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-4 border-t border-slate-800 flex justify-between items-center bg-[#15191e] shrink-0">
-              <div>
+            <div className={`p-4 border-t border-slate-800 flex bg-[#15191e] shrink-0 ${
+              isInline ? 'flex-col gap-3 items-stretch' : 'justify-between items-center'
+            }`}>
+              <div className={isInline ? 'w-full' : ''}>
                 {isEditMode && (
-                  <div className="flex gap-2">
+                  <div className={`flex gap-2 ${isInline ? 'w-full' : ''}`}>
                     <button
                       onClick={handleDelete}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                      className={`px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 justify-center ${isInline ? 'flex-1' : ''}`}
                     >
                       Delete Instance
                     </button>
                     {onDuplicate && editEntry && (
                       <button
                         onClick={() => onDuplicate(editEntry.id)}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                        className={`px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 justify-center ${isInline ? 'flex-1' : ''}`}
                       >
                         <Copy size={14} />
                         Duplicate
@@ -1270,16 +1410,16 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className={`flex gap-2 ${isInline ? 'w-full' : ''}`}>
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
+                  className={`px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400 justify-center ${isInline ? 'flex-1' : ''}`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                  className={`px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm justify-center ${isInline ? 'flex-1' : ''}`}
                 >
                   Save Instance
                 </button>

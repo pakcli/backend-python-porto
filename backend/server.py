@@ -163,11 +163,90 @@ def open_folder():
     except Exception as e:
         return jsonify({"error": f"Failed to open directory: {str(e)}"}), 500
 
+def update_parent_dependency(child_id, parent_id, add=True):
+    import frontmatter
+    parts = parent_id.split('_', 1)
+    if len(parts) != 2:
+        return
+    category, folder_name = parts
+    
+    file_path = os.path.join(WATCH_DIR, category, folder_name, "index.md")
+    if not os.path.isfile(file_path):
+        return
+        
+    try:
+        post = frontmatter.load(file_path)
+        deps = post.get("dependencies", [])
+        
+        if isinstance(deps, str):
+            deps = [d.strip() for d in deps.split(",") if d.strip()]
+        elif not isinstance(deps, list):
+            deps = []
+            
+        deps = [str(d).strip() for d in deps]
+        
+        if add:
+            if child_id not in deps:
+                deps.append(child_id)
+        else:
+            if child_id in deps:
+                deps = [d for d in deps if d != child_id]
+                
+        if deps:
+            post["dependencies"] = deps
+        else:
+            if "dependencies" in post:
+                del post["dependencies"]
+                
+        with open(file_path, "wb") as f:
+            frontmatter.dump(post, f)
+            
+        print(f"[SERVER] Updated dependencies for {parent_id}: {deps}")
+    except Exception as e:
+        print(f"[SERVER] Error updating dependencies for {parent_id}: {e}")
+
+def cleanup_deleted_dependency(deleted_id):
+    import frontmatter
+    categories = ["proj", "cert", "item", "achv"]
+    for cat in categories:
+        cat_dir = os.path.join(WATCH_DIR, cat)
+        if not os.path.isdir(cat_dir):
+            continue
+        for folder in os.listdir(cat_dir):
+            folder_path = os.path.join(cat_dir, folder)
+            if not os.path.isdir(folder_path):
+                continue
+            index_path = os.path.join(folder_path, "index.md")
+            if not os.path.isfile(index_path):
+                continue
+            try:
+                post = frontmatter.load(index_path)
+                deps = post.get("dependencies", [])
+                if isinstance(deps, str):
+                    deps = [d.strip() for d in deps.split(",") if d.strip()]
+                elif not isinstance(deps, list):
+                    deps = []
+                deps = [str(d).strip() for d in deps]
+                if deleted_id in deps:
+                    deps = [d for d in deps if d != deleted_id]
+                    if deps:
+                        post["dependencies"] = deps
+                    else:
+                        if "dependencies" in post:
+                            del post["dependencies"]
+                    with open(index_path, "wb") as f:
+                        frontmatter.dump(post, f)
+                    print(f"[SERVER] Cleaned up deleted dependency {deleted_id} from {cat}_{folder}")
+            except Exception as e:
+                print(f"[SERVER] Error cleaning up dependency in {index_path}: {e}")
+
 @app.route('/api/entries/create', methods=['POST'])
 def create_entry():
     category = request.form.get('category')  # 'proj', 'cert', 'item', 'achv'
     folder_name = request.form.get('folderName')  # directory name
     content = request.form.get('content')  # index.md contents
+    target_parent = request.form.get('targetParent')
+    orig_target_parent = request.form.get('originalTargetParent')
 
     if not category or not folder_name or not content:
         return jsonify({"error": "category, folderName, and content are required"}), 400
@@ -240,6 +319,58 @@ def create_entry():
             f.write(content)
     except Exception as e:
         return jsonify({"error": f"Failed to save index.md: {str(e)}"}), 500
+
+    # Update parent dependencies
+    new_child_id = f"{category}_{folder_name}"
+    if original_category and original_folder_name:
+        old_child_id = f"{orig_category_sanitized}_{orig_folder_sanitized}"
+        if old_child_id != new_child_id:
+            # Child renamed: remove old ID from original parent, add new ID to new parent
+            if orig_target_parent:
+                update_parent_dependency(old_child_id, orig_target_parent, add=False)
+            if target_parent:
+                update_parent_dependency(new_child_id, target_parent, add=True)
+            # Also rename dependency references in any other cards
+            categories = ["proj", "cert", "item", "achv"]
+            for cat in categories:
+                cat_dir = os.path.join(WATCH_DIR, cat)
+                if not os.path.isdir(cat_dir):
+                    continue
+                for folder in os.listdir(cat_dir):
+                    folder_path = os.path.join(cat_dir, folder)
+                    if not os.path.isdir(folder_path):
+                        continue
+                    index_path = os.path.join(folder_path, "index.md")
+                    if not os.path.isfile(index_path):
+                        continue
+                    try:
+                        import frontmatter
+                        post = frontmatter.load(index_path)
+                        deps = post.get("dependencies", [])
+                        if isinstance(deps, str):
+                            deps = [d.strip() for d in deps.split(",") if d.strip()]
+                        elif not isinstance(deps, list):
+                            deps = []
+                        deps = [str(d).strip() for d in deps]
+                        if old_child_id in deps:
+                            deps = [new_child_id if d == old_child_id else d for d in deps]
+                            post["dependencies"] = deps
+                            with open(index_path, "wb") as f:
+                                frontmatter.dump(post, f)
+                            print(f"[SERVER] Renamed dependency {old_child_id} -> {new_child_id} in {cat}_{folder}")
+                    except Exception as e:
+                        print(f"[SERVER] Error renaming dependency in {index_path}: {e}")
+        else:
+            # Child NOT renamed: check if parent changed
+            if target_parent != orig_target_parent:
+                if orig_target_parent:
+                    update_parent_dependency(new_child_id, orig_target_parent, add=False)
+                if target_parent:
+                    update_parent_dependency(new_child_id, target_parent, add=True)
+    else:
+        # New instance: add new ID to target parent (if any)
+        if target_parent:
+            update_parent_dependency(new_child_id, target_parent, add=True)
 
     # 1. Delete requested files
     delete_files = request.form.getlist('deleteFiles')
@@ -347,8 +478,8 @@ def delete_entry():
     if not target_dir.startswith(abs_watch_dir) or target_dir == abs_watch_dir:
         return jsonify({"error": "Access denied"}), 403
 
-    if not os.path.exists(target_dir):
-        return jsonify({"error": "Directory does not exist"}), 404
+    deleted_id = f"{category_sanitized}_{folder_sanitized}"
+    cleanup_deleted_dependency(deleted_id)
 
     try:
         shutil.rmtree(target_dir)
