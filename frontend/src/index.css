@@ -384,3 +384,14 @@ body.light ::-webkit-scrollbar-thumb:hover {
   animation: path-flow 1.2s linear infinite;
 }
 
+@keyframes border-flow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.animate-border-flow {
+  stroke-dasharray: 12, 8;
+  animation: border-flow 2.5s linear infinite;
+}
+

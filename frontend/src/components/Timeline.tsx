@@ -17,6 +17,7 @@ interface TimelineProps {
   isSplitView?: boolean;
   selectedEntryId?: string;
   onDeselect?: () => void;
+  showOrbs?: boolean;
 }
 
 interface Connection {
@@ -58,7 +59,6 @@ const hasUnfinishedProjectDeps = (entry: PortfolioEntry, allEntries: PortfolioEn
   return entry.dependencies.some(depId => {
     const dep = allEntries.find(e => e.id === depId);
     if (!dep) return false;
-    if (dep.source !== 'proj') return false;
     const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
     return !isDone;
   });
@@ -66,15 +66,40 @@ const hasUnfinishedProjectDeps = (entry: PortfolioEntry, allEntries: PortfolioEn
 
 const getDependencyColor = (dep: PortfolioEntry, checkedCards: Record<string, boolean>) => {
   const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+  
   if (dep.source === 'proj') {
-    return isDone ? '#10b981' : '#475569';
+    // 1. proj done gray, 2. proj undone green
+    return isDone ? '#475569' : '#10b981';
   }
+  
   if (dep.source === 'achv') {
+    // achv done gold, undone gray
     return isDone ? '#fbbf24' : '#475569';
   }
+  
   if (dep.source === 'item' || dep.source === 'cert') {
-    return isDone ? '#8154c0' : '#7c6990';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isInsideRange = !!dep.datestart && todayStr >= dep.datestart && (!dep.dateend || todayStr <= dep.dateend);
+    const isPastRange = !!dep.dateend && todayStr > dep.dateend;
+    
+    if (isDone) {
+      if (isPastRange) {
+        // 5. item done out of range (cooldown) = blue
+        return '#3b82f6';
+      }
+      // 3. item done in range = purple
+      return '#8154c0';
+    } else {
+      if (isInsideRange) {
+        // 4. item not done in range = purple (desaturated purple #7c6990)
+        return '#7c6990';
+      } else {
+        // 6. item not done not in range = RED
+        return '#ef4444';
+      }
+    }
   }
+  
   return '#475569'; // Default Slate/Gray
 };
 
@@ -89,6 +114,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   isSplitView,
   selectedEntryId,
   onDeselect,
+  showOrbs = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -214,7 +240,9 @@ export const Timeline: React.FC<TimelineProps> = ({
           const d = `M ${xStart} ${yStart} C ${xStart} ${cpStart}, ${xEnd} ${cpEnd}, ${xEnd} ${yEnd}`;
 
           const isDone = checkedCards[depEntry.id] !== undefined ? checkedCards[depEntry.id] : (depEntry.done || false);
-          const isAnimated = !isDone && (depEntry.source === 'item' || depEntry.source === 'cert');
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const isInsideRange = !!depEntry.datestart && todayStr >= depEntry.datestart && (!depEntry.dateend || todayStr <= depEntry.dateend);
+          const isAnimated = !isDone && (depEntry.source === 'item' || depEntry.source === 'cert') && isInsideRange;
 
           newConnections.push({
             id: `${entry.id}-${depEntry.id}`,
@@ -331,6 +359,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       onToggleChecked,
       hasUnfinishedProjectDeps: hasUnfinishedProjectDeps(entry, entries, checkedCards),
       dependentsCount: entries.filter(e => e.dependencies?.includes(entry.id)).length,
+      showOrbs,
     };
 
     let cardElement: React.ReactNode = null;
@@ -343,10 +372,6 @@ export const Timeline: React.FC<TimelineProps> = ({
 
     if (!cardElement) return null;
 
-    // Overdue = past date + not done yet
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const isDoneEntry = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
-    const isOverdue = !isDoneEntry && !!entry.datestart && entry.datestart < todayStr;
 
     // Focus mode visual roles
     // Focus Mode (focus) is only active if split view is not open (standalone) and no selected entry is active.
@@ -392,6 +417,12 @@ export const Timeline: React.FC<TimelineProps> = ({
       }
     }
 
+    const activeFocusedId = hoveredCardId || selectedEntryId;
+    const isDependencyOfActive = !!activeFocusedId &&
+      connections.some(c => c.fromId === activeFocusedId && c.toId === entry.id);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isCooldown = isDependencyOfActive && !!entry.dateend && todayStr > entry.dateend;
+
     return (
       <div
         key={entry.id}
@@ -417,14 +448,11 @@ export const Timeline: React.FC<TimelineProps> = ({
             }}
           />
         )}
-        {/* Overdue ring: past + not done */}
-        {isOverdue && (
-          <div
-            className="absolute -inset-[1px] rounded-lg pointer-events-none z-10"
-            style={{
-              boxShadow: 'inset 0 0 0 1px rgba(180,80,30,0.45), 0 0 12px rgba(180,80,30,0.18)',
-            }}
-          />
+        {/* Cooldown overlay if dependency is past range */}
+        {isCooldown && (
+          <div className="absolute inset-0 rounded-lg bg-blue-950/45 border-[3px] border-blue-500/50 z-30 pointer-events-none shadow-[inset_0_0_15px_rgba(59,130,246,0.3)] flex items-center justify-center">
+            <span className="text-[10px] font-black text-blue-300/80 tracking-widest font-dota uppercase select-none">Not in used</span>
+          </div>
         )}
         {cardElement}
       </div>

@@ -11,7 +11,8 @@ interface CardProps {
   thinnerCard?: boolean;
   isChecked?: boolean;
   onToggleChecked?: (id: string) => void;
-  dependentsCount?: number;
+  hasUnfinishedProjectDeps?: boolean;
+  showOrbs?: boolean;
 }
 
 const getOrbColors = (skillStr: string | undefined) => {
@@ -24,28 +25,21 @@ const getOrbColors = (skillStr: string | undefined) => {
   if (!skillStr || skillStr.length !== 3) {
     return [defaultColor, defaultColor, defaultColor];
   }
-  const chars = skillStr.toLowerCase().split('');
-  
-  // Count occurrences
-  const counts: Record<string, number> = { q: 0, w: 0, e: 0 };
-  for (const char of chars) {
-    if (counts[char] !== undefined) counts[char]++;
+  // Find character frequencies to determine rendering order
+  const count: Record<string, number> = {};
+  for (const char of skillStr) {
+    count[char] = (count[char] || 0) + 1;
   }
-  
-  // Find dominant character (count >= 2)
-  let dominantChar: string | null = null;
-  for (const char of ['q', 'w', 'e']) {
-    if (counts[char] >= 2) {
-      dominantChar = char;
-      break;
-    }
-  }
-  
-  let orderedChars: string[] = [];
-  if (dominantChar) {
-    const doms = chars.filter(c => c === dominantChar);
-    const nonDoms = chars.filter(c => c !== dominantChar);
-    orderedChars = [...doms, ...nonDoms];
+  const chars = Array.from(skillStr);
+  let orderedChars = [...chars];
+
+  // If there's a dominant character (count >= 2), we place it first to represent major type
+  const entriesList = Object.entries(count);
+  const dominant = entriesList.find(([_, val]) => val >= 2);
+  if (dominant) {
+    const domChar = dominant[0];
+    const rest = chars.filter(c => c !== domChar);
+    orderedChars = [domChar, domChar, ...rest];
   } else {
     // If no dominant one, use blue ('q') first
     const nonQ = chars.filter(c => c !== 'q');
@@ -66,15 +60,16 @@ export const AchievementCard: React.FC<CardProps> = ({
   thinnerCard, 
   isChecked = false, 
   onToggleChecked,
-  dependentsCount = 0
+  hasUnfinishedProjectDeps = false,
+  showOrbs = true
 }) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
-  const borderAndGlowClasses = isChecked
-    ? 'dota-immortal-glow border-[#a3761a] hover:border-[#e4ae39] shadow-[0_0_20px_rgba(228,174,57,0.15)] pt-4'
-    : 'border-slate-400/80 achievement-card-silver-glow shadow-[0_0_20px_rgba(148,163,184,0.15)]';
+  const borderAndGlowClasses = (hasUnfinishedProjectDeps || !isChecked)
+    ? 'border-slate-400/80 achievement-card-silver-glow shadow-[0_0_20px_rgba(148,163,184,0.15)]'
+    : 'dota-immortal-glow border-[#a3761a] hover:border-[#e4ae39] shadow-[0_0_20px_rgba(228,174,57,0.15)] pt-4';
 
-  const badgeClasses = isChecked 
+  const badgeClasses = isChecked && !hasUnfinishedProjectDeps
     ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30'
     : 'bg-slate-500/5 text-slate-400 border-slate-550/20';
 
@@ -86,7 +81,7 @@ export const AchievementCard: React.FC<CardProps> = ({
       }`}
     >
       {/* Dota 2 Immortal Top Bar Indicator */}
-      {isChecked && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
+      {isChecked && !hasUnfinishedProjectDeps && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
 
       {/* Decorative background trophy icon */}
       <div className="absolute -right-4 -bottom-4 opacity-5 dark:opacity-[0.03]">
@@ -97,18 +92,18 @@ export const AchievementCard: React.FC<CardProps> = ({
         <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
           {/* Category Label Badge (far left) */}
           <span className={`text-[10px] tracking-wider font-extrabold px-2 py-0.5 rounded border whitespace-nowrap shrink-0 uppercase ${badgeClasses}`}>
-            {isChecked ? 'IMMORTAL' : 'ACHIEVEMENT'}
+            {isChecked && !hasUnfinishedProjectDeps ? 'IMMORTAL' : 'ACHIEVEMENT'}
           </span>
           
           {/* Center Details Block (title only, bigger) */}
           <div className="flex-1 min-w-0">
-            <h3 className={`text-lg font-black transition-colors flex items-center min-w-0 w-full ${isChecked ? 'text-white' : 'dark:text-slate-100 text-slate-800'}`}>
+            <h3 className={`text-lg font-black transition-colors flex items-center min-w-0 w-full ${isChecked && !hasUnfinishedProjectDeps ? 'text-white' : 'dark:text-slate-100 text-slate-800'}`}>
               <CardTitle title={entry.title} />
             </h3>
           </div>
 
           {/* 3-Circle Orb Combo Icon (far right) */}
-          {entry.skill && entry.skill.trim().length === 3 ? (
+          {showOrbs && entry.skill && entry.skill.trim().length === 3 ? (
             <div className="w-8 h-7 relative shrink-0">
               <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
               <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
@@ -125,7 +120,7 @@ export const AchievementCard: React.FC<CardProps> = ({
         </div>
 
         {/* Rarity & Slot Info for Immortal */}
-        {isChecked && !thinnerCard && (
+        {isChecked && !hasUnfinishedProjectDeps && !thinnerCard && (
           <div className="text-[10px] font-bold text-slate-400 flex gap-4 mb-2.5">
             <span>Rarity: <span className="dota-immortal-text">Immortal</span></span>
             <span>Slot: <span className="text-slate-350">Achievement</span></span>
@@ -135,7 +130,7 @@ export const AchievementCard: React.FC<CardProps> = ({
         {!thinnerCard && (
           entry.imgPath ? (
             <div className={`w-full flex-1 min-h-0 rounded overflow-hidden bg-slate-900/50 flex items-center justify-center mb-3 border ${
-              isChecked ? 'border-[#a3761a]/30' : 'border-amber-500/20 dark:border-slate-800'
+              isChecked && !hasUnfinishedProjectDeps ? 'border-[#a3761a]/30' : 'border-amber-500/20 dark:border-slate-800'
             }`}>
               {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
                 <PdfThumbnail src={entry.imgPath} title={entry.title} />
@@ -158,7 +153,7 @@ export const AchievementCard: React.FC<CardProps> = ({
         )}
 
         {/* Dota 2 Style Modifiers Section */}
-        {isChecked && !thinnerCard && (
+        {isChecked && !hasUnfinishedProjectDeps && !thinnerCard && (
           <div className="mb-2.5 text-[10px] border-t border-[#a3761a]/25 pt-2 bg-black/20 p-2 rounded">
             <div className="font-extrabold uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1.5 select-none">
               <span>Modifiers</span>
@@ -186,7 +181,7 @@ export const AchievementCard: React.FC<CardProps> = ({
         )}
 
         {/* Dota 2 Flavor Text */}
-        {isChecked && !thinnerCard && (
+        {isChecked && !hasUnfinishedProjectDeps && !thinnerCard && (
           <div className="text-[10px] italic text-slate-500 font-medium font-serif mb-3 leading-snug border-t border-[#a3761a]/20 pt-1.5">
             "A testament of absolute focus, completed with master-class precision under the vigilant eyes of the Arsenal Magus."
           </div>
@@ -218,22 +213,13 @@ export const AchievementCard: React.FC<CardProps> = ({
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
-          {dependentsCount > 0 && (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-450 select-none" title={`${dependentsCount} Dependents (Outputs)`}>
-              <div className="relative w-4 h-3.5 shrink-0 opacity-70">
-                <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-500" />
-              </div>
-              <span className="tabular-nums">({dependentsCount})</span>
-            </div>
-          )}
+
 
           {onToggleChecked && (
             <label 
               onClick={(e) => e.stopPropagation()} 
               className={`flex items-center gap-1.5 text-[10px] cursor-pointer select-none font-semibold uppercase tracking-wider ml-1 ${
-                isChecked ? 'text-[#e4ae39] hover:text-amber-300' : 'text-slate-400 hover:text-slate-200'
+                isChecked && !hasUnfinishedProjectDeps ? 'text-[#e4ae39] hover:text-amber-300' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <input
@@ -250,7 +236,7 @@ export const AchievementCard: React.FC<CardProps> = ({
         </div>
       </div>
       {/* Gold Bottom Bar for Immortal Card */}
-      {isChecked && <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#a3761a] via-[#e4ae39] to-[#a3761a]" />}
+      {isChecked && !hasUnfinishedProjectDeps && <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#a3761a] via-[#e4ae39] to-[#a3761a]" />}
     </div>
   );
 };

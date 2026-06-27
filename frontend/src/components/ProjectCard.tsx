@@ -12,7 +12,7 @@ interface CardProps {
   isChecked?: boolean;
   onToggleChecked?: (id: string) => void;
   hasUnfinishedProjectDeps?: boolean;
-  dependentsCount?: number;
+  showOrbs?: boolean;
 }
 
 const getOrbColors = (skillStr: string | undefined) => {
@@ -68,11 +68,11 @@ export const ProjectCard: React.FC<CardProps> = ({
   isChecked = false, 
   onToggleChecked,
   hasUnfinishedProjectDeps = false,
-  dependentsCount = 0
+  showOrbs = true
 }) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
-  const isGreen = isChecked || !hasUnfinishedProjectDeps;
+  const isGreen = !isChecked && !hasUnfinishedProjectDeps;
   const borderClasses = isGreen
     ? 'border-emerald-500/80 achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]'
     : 'border-slate-800/80';
@@ -100,7 +100,7 @@ export const ProjectCard: React.FC<CardProps> = ({
           </div>
 
           {/* 3-Circle Orb Combo Icon (far right) */}
-          {entry.skill && entry.skill.trim().length === 3 ? (
+          {showOrbs && entry.skill && entry.skill.trim().length === 3 ? (
             <div className="w-8 h-7 relative shrink-0">
               <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
               <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
@@ -179,16 +179,7 @@ export const ProjectCard: React.FC<CardProps> = ({
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
-          {dependentsCount > 0 && (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-450 select-none" title={`${dependentsCount} Dependents (Outputs)`}>
-              <div className="relative w-4 h-3.5 shrink-0 opacity-70">
-                <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-500" />
-              </div>
-              <span className="tabular-nums">({dependentsCount})</span>
-            </div>
-          )}
+
 
           {onToggleChecked && (
             <label 

@@ -12,6 +12,7 @@ interface CardProps {
   isChecked?: boolean;
   onToggleChecked?: (id: string) => void;
   dependentsCount?: number;
+  showOrbs?: boolean;
 }
 
 const getOrbColors = (skillStr: string | undefined) => {
@@ -66,17 +67,61 @@ export const ItemCard: React.FC<CardProps> = ({
   thinnerCard, 
   isChecked = false, 
   onToggleChecked,
-  dependentsCount = 0
+  dependentsCount = 0,
+  showOrbs = true
 }) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
+
+  const isDependency = dependentsCount > 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isInsideRange = !!entry.datestart && todayStr >= entry.datestart && (!entry.dateend || todayStr <= entry.dateend);
+
+  let borderClasses = 'border-[3px] border-transparent';
+  let bgStyleClasses = 'bg-[#12161b]/95';
+
+  if (isDependency) {
+    if (isChecked) {
+      if (isInsideRange) {
+        borderClasses = 'border-[3px] border-[#8154c0]';
+        bgStyleClasses = 'bg-gradient-to-r from-[#12161b]/95 via-[#1a1229]/95 to-[#12161b]/95';
+      } else {
+        borderClasses = 'border-[3px] border-[#3b82f6] shadow-[0_0_20px_rgba(59,130,246,0.35)]';
+      }
+    } else {
+      if (isInsideRange) {
+        borderClasses = 'border-[3px] border-transparent shadow-[0_0_25px_rgba(129,84,192,0.45)]';
+      } else {
+        borderClasses = 'border-[3px] border-[#ef4444] shadow-[0_0_20px_rgba(239,68,68,0.25)]';
+      }
+    }
+  } else {
+    borderClasses = 'border-[3px] border-transparent hover:border-slate-800/50';
+  }
 
   return (
     <div 
       onClick={() => onMore(entry)}
-      className={`bg-[#12161b]/95 border border-slate-800 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
+      className={`${bgStyleClasses} rounded-lg transition-all duration-300 shadow-md group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${borderClasses} ${
         thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'h-[384px] p-5'
       }`}
     >
+      {/* Clockwise Animated Border Overlay */}
+      {isDependency && !isChecked && isInsideRange && (
+        <div className="absolute pointer-events-none rounded-lg z-20" style={{ top: -3, left: -3, right: -3, bottom: -3 }}>
+          <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
+            <rect
+              x="1.5"
+              y="1.5"
+              style={{ width: 'calc(100% - 3px)', height: 'calc(100% - 3px)' }}
+              rx="8"
+              fill="none"
+              stroke="#8154c0"
+              strokeWidth="3"
+              className="animate-border-flow"
+            />
+          </svg>
+        </div>
+      )}
       {/* Decorative icon background */}
       <div className="absolute -right-6 -bottom-6 opacity-5 dark:opacity-[0.03]">
         <Cpu size={120} />
@@ -97,7 +142,7 @@ export const ItemCard: React.FC<CardProps> = ({
           </div>
 
           {/* 3-Circle Orb Combo Icon (far right) */}
-          {entry.skill && entry.skill.trim().length === 3 ? (
+          {showOrbs && entry.skill && entry.skill.trim().length === 3 ? (
             <div className="w-8 h-7 relative shrink-0">
               <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
               <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
@@ -162,16 +207,7 @@ export const ItemCard: React.FC<CardProps> = ({
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
-          {dependentsCount > 0 && (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-450 select-none" title={`${dependentsCount} Dependents (Outputs)`}>
-              <div className="relative w-4 h-3.5 shrink-0 opacity-70">
-                <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-500" />
-              </div>
-              <span className="tabular-nums">({dependentsCount})</span>
-            </div>
-          )}
+
 
           {onToggleChecked && (
             <label 
@@ -187,7 +223,7 @@ export const ItemCard: React.FC<CardProps> = ({
                 }}
                 className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900 cursor-pointer"
               />
-              <span>Done</span>
+              <span>{isChecked ? 'Boothable' : 'Not'}</span>
             </label>
           )}
         </div>

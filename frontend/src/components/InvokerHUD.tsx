@@ -40,6 +40,8 @@ interface HUDProps {
   setDreamingIncludePast: (val: boolean) => void;
   reverseTimeline: boolean;
   setReverseTimeline: (val: boolean) => void;
+  showOrbs: boolean;
+  setShowOrbs: (val: boolean) => void;
   entriesForStats: PortfolioEntry[];
   onSelectCombo: (combo: string) => void;
   shownCount: number;
@@ -83,6 +85,8 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setDreamingIncludePast,
   reverseTimeline,
   setReverseTimeline,
+  showOrbs,
+  setShowOrbs,
   entriesForStats,
   onSelectCombo,
   shownCount,
@@ -883,6 +887,36 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             }`}
           >
             Reverse (same timeline)
+          </button>
+        </div>
+      </div>
+
+      {/* Show Skill Orbs: yes | no */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Show Skill Orbs</span>
+          <span className={`font-bold capitalize ${showOrbs ? 'text-emerald-400' : 'text-white'}`}>{showOrbs ? 'Yes' : 'No'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setShowOrbs(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              showOrbs
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => setShowOrbs(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !showOrbs
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            No
           </button>
         </div>
       </div>

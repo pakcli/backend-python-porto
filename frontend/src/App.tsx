@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package, ChevronDown } from 'lucide-react';
+import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -18,43 +18,86 @@ const hasUnfinishedProjectDeps = (entry: PortfolioEntry, allEntries: PortfolioEn
   return entry.dependencies.some(depId => {
     const dep = allEntries.find(e => e.id === depId);
     if (!dep) return false;
-    if (dep.source !== 'proj') return false;
     const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
     return !isDone;
   });
 };
 
-const getDependencyColor = (dep: PortfolioEntry, checkedCards?: Record<string, boolean>) => {
-  const isDone = checkedCards && checkedCards[dep.id] !== undefined
-    ? checkedCards[dep.id]
-    : (dep.done || false);
+const getDependencyColor = (dep: PortfolioEntry, checkedCards: Record<string, boolean>, allEntries: PortfolioEntry[]) => {
+  const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+  
   if (dep.source === 'proj') {
-    return isDone ? '#10b981' : '#475569';
+    const hasUnfinished = hasUnfinishedProjectDeps(dep, allEntries, checkedCards);
+    if (isDone) return '#475569';
+    return hasUnfinished ? '#475569' : '#10b981';
   }
+  
   if (dep.source === 'achv') {
-    return isDone ? '#fbbf24' : '#475569';
+    const hasUnfinished = hasUnfinishedProjectDeps(dep, allEntries, checkedCards);
+    if (hasUnfinished) return '#94a3b8';
+    return isDone ? '#fbbf24' : '#94a3b8';
   }
+  
   if (dep.source === 'item' || dep.source === 'cert') {
-    return isDone ? '#8154c0' : '#7c6990';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isInsideRange = !!dep.datestart && todayStr >= dep.datestart && (!dep.dateend || todayStr <= dep.dateend);
+    const isPastRange = !!dep.dateend && todayStr > dep.dateend;
+    
+    if (isDone) {
+      if (isPastRange) {
+        return '#3b82f6';
+      }
+      return '#8154c0';
+    } else {
+      if (isInsideRange) {
+        return '#8154c0';
+      } else {
+        return '#ef4444';
+      }
+    }
   }
-  return '#475569'; // Default Slate/Gray
+  
+  return '#475569';
 };
 
 const getDetailPanelBorderClasses = (entry: PortfolioEntry, checkedCards: Record<string, boolean>, allEntries: PortfolioEntry[]) => {
   const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
   if (entry.source === 'achv') {
-    return isDone
-      ? 'border-2 border-[#a3761a] bg-[#121415] dota-immortal-glow shadow-[0_0_20px_rgba(228,174,57,0.22)] pt-2'
-      : 'border-2 border-slate-400/80 bg-[#12161b] achievement-card-silver-glow shadow-[0_0_20px_rgba(148,163,184,0.15)]';
+    const hasUnfinished = hasUnfinishedProjectDeps(entry, allEntries, checkedCards);
+    return (hasUnfinished || !isDone)
+      ? 'border-[3px] border-slate-400/80 bg-[#12161b] achievement-card-silver-glow shadow-[0_0_20px_rgba(148,163,184,0.15)]'
+      : 'border-[3px] border-[#a3761a] bg-[#121415] dota-immortal-glow shadow-[0_0_20px_rgba(228,174,57,0.22)] pt-2';
   }
   if (entry.source === 'proj') {
     const hasUnfinished = hasUnfinishedProjectDeps(entry, allEntries, checkedCards);
-    const isGreen = isDone || !hasUnfinished;
+    const isGreen = !isDone && !hasUnfinished;
     return isGreen
-      ? 'border-2 border-emerald-500/80 bg-[#12161b] achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]'
-      : 'border border-slate-800 bg-[#12161b]';
+      ? 'border-[3px] border-emerald-500/80 bg-[#12161b] achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+      : 'border-[3px] border-slate-800/80 bg-[#12161b]';
   }
-  return 'border border-slate-800 bg-[#12161b]';
+  if (entry.source === 'item') {
+    const dependentsCount = allEntries.filter(e => e.dependencies?.includes(entry.id)).length;
+    const isDependency = dependentsCount > 0;
+    if (!isDependency) {
+      return 'border-[3px] border-transparent bg-[#12161b]';
+    }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isInsideRange = !!entry.datestart && todayStr >= entry.datestart && (!entry.dateend || todayStr <= entry.dateend);
+    if (isDone) {
+      if (isInsideRange) {
+        return 'border-[3px] border-[#8154c0] bg-gradient-to-r from-[#12161b]/95 via-[#1a1229]/95 to-[#12161b]/95';
+      } else {
+        return 'border-[3px] border-[#3b82f6] bg-[#12161b] shadow-[0_0_20px_rgba(59,130,246,0.35)]';
+      }
+    } else {
+      if (isInsideRange) {
+        return 'border-[3px] border-transparent bg-[#12161b] shadow-[0_0_25px_rgba(129,84,192,0.45)]';
+      } else {
+        return 'border-[3px] border-[#ef4444] bg-[#12161b] shadow-[0_0_20px_rgba(239,68,68,0.25)]';
+      }
+    }
+  }
+  return 'border-[3px] border-slate-800/80 bg-[#12161b]';
 };
 
 const getDetailPanelHeaderClasses = (entry: PortfolioEntry, checkedCards: Record<string, boolean>) => {
@@ -99,6 +142,46 @@ const formatDate = (dateStr: string) => {
     }
   }
   return dateStr;
+};
+
+const getRelativeDateString = (dateStr: string) => {
+  if (!dateStr) return '';
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const targetDate = new Date(dateStr);
+  targetDate.setHours(0,0,0,0);
+
+  const diffTime = targetDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return `today [${formatDate(dateStr)}]`;
+  }
+
+  if (diffDays > 0) {
+    // Future
+    if (diffDays < 30) {
+      return `${diffDays} days left [${formatDate(dateStr)}]`;
+    }
+    const months = Math.round(diffDays / 30.4);
+    if (months < 12) {
+      return `${months} ${months === 1 ? 'month' : 'months'} left [${formatDate(dateStr)}]`;
+    }
+    const years = Math.round(diffDays / 365);
+    return `${years} ${years === 1 ? 'year' : 'years'} left [${formatDate(dateStr)}]`;
+  } else {
+    // Past
+    const pastDays = Math.abs(diffDays);
+    if (pastDays < 30) {
+      return `${pastDays} days ago [${formatDate(dateStr)}]`;
+    }
+    const months = Math.round(pastDays / 30.4);
+    if (months < 12) {
+      return `${months} ${months === 1 ? 'month' : 'months'} ago [${formatDate(dateStr)}]`;
+    }
+    const years = Math.round(pastDays / 365);
+    return `${years} ${years === 1 ? 'year' : 'years'} ago [${formatDate(dateStr)}]`;
+  }
 };
 
 const SPELL_NAMES: Record<string, { formal: string; dota: string }> = {
@@ -204,6 +287,10 @@ export const App: React.FC = () => {
   const [activeCombo, setActiveCombo] = useState(() => {
     return localStorage.getItem('activeCombo') || '';
   });
+  const [showOrbs, setShowOrbs] = useState<boolean>(() => {
+    const saved = localStorage.getItem('showOrbs');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [selectedEntry, setSelectedEntry] = useState<PortfolioEntry | null>(null);
   const [hoveredDepId, setHoveredDepId] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -280,13 +367,7 @@ export const App: React.FC = () => {
     return localStorage.getItem('clickToEdit') === 'true';
   });
   const [isEditingInline, setIsEditingInline] = useState<boolean>(false);
-  const [isSplitNetworkExpanded, setIsSplitNetworkExpanded] = useState<boolean>(false);
-  const [isModalNetworkExpanded, setIsModalNetworkExpanded] = useState<boolean>(false);
 
-  useEffect(() => {
-    setIsSplitNetworkExpanded(false);
-    setIsModalNetworkExpanded(false);
-  }, [selectedEntry?.id]);
 
   // Temporary view settings for Tegak Lurus panel modal (they follow/default to the sidebar HUD settings when opened)
   const [tempDreamingShowAll, setTempDreamingShowAll] = useState(dreamingShowAll);
@@ -424,12 +505,13 @@ export const App: React.FC = () => {
     localStorage.setItem('dreamingShowAll', String(dreamingShowAll));
     localStorage.setItem('dreamingIncludePast', String(dreamingIncludePast));
     localStorage.setItem('reverseTimeline', String(reverseTimeline));
+    localStorage.setItem('showOrbs', String(showOrbs));
     if (activeStatFilter === null) {
       localStorage.removeItem('activeStatFilter');
     } else {
       localStorage.setItem('activeStatFilter', activeStatFilter);
     }
-  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit, matchReadySimEnabled, dreamingShowAll, dreamingIncludePast, reverseTimeline]);
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit, matchReadySimEnabled, dreamingShowAll, dreamingIncludePast, reverseTimeline, showOrbs]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -586,9 +668,10 @@ export const App: React.FC = () => {
         const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
         if (isDone) return false;
       }
-      // Time range filter
+      // Time range filter: if Future Only, filter out strictly past entries
       if (!includePast) {
-        return entry.datestart >= todayStr;
+        const isPast = !!entry.dateend && entry.dateend < todayStr;
+        if (isPast) return false;
       }
       return true;
     }).sort((a, b) => {
@@ -970,71 +1053,149 @@ export const App: React.FC = () => {
     navigateToEntry(null);
   };
 
-  const renderImmortalSection = (entry: PortfolioEntry) => {
+  const renderTwoSidedNetwork = (selectedEntry: PortfolioEntry) => {
+    const depIds = selectedEntry.dependencies || [];
+    const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
+    const validDependents = entries.filter(e => e.dependencies?.includes(selectedEntry.id));
+
+    if (validDeps.length === 0 && validDependents.length === 0) return null;
+
+    const L = validDeps.length;
+    const R = validDependents.length;
+    const maxNodes = Math.max(L, R, 1);
+    const svgH = Math.max(100, maxNodes * 36 + 40);
+    const yCenter = svgH / 2;
+
+    const xLeft = 140;
+    const xCenter = 250;
+    const xRight = 360;
+    const dx = 55;
+
     return (
-      <div className="mt-4 flex flex-col gap-4 animate-fadeIn select-none prose-none">
-        {/* Rarity and Slot Info */}
-        <div className="bg-[#191d24]/40 border border-[#a3761a]/30 rounded-lg p-3 text-xs">
-          <div className="grid grid-cols-2 gap-y-2 font-sans font-semibold">
-            <div>
-              <span className="text-slate-400">Rarity:</span>{" "}
-              <span className="dota-immortal-text font-black uppercase tracking-wider">Immortal</span>
-            </div>
-            <div>
-              <span className="text-slate-400">Slot:</span>{" "}
-              <span className="text-slate-200 font-bold">Achievement</span>
-            </div>
-            {entry.datestart && (
-              <div className="col-span-2 text-slate-350">
-                <span className="text-slate-400">Unlocked:</span>{" "}
-                <span>{entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}</span>
-              </div>
-            )}
+      <div className="mb-5 p-3 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
+        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between select-none mb-3">
+          <div className="flex items-center gap-1.5">
+            <span>Connection Network</span>
           </div>
+          <span className="text-[9px] text-slate-600 font-medium normal-case">Hover to identify • Click to navigate</span>
         </div>
+        
+        <div className="relative w-full overflow-x-auto" style={{ height: `${svgH}px` }}>
+          <svg className="w-full h-full min-w-[500px]" viewBox={`0 0 500 ${svgH}`} preserveAspectRatio="xMidYMid meet">
+            {/* 1. Left Wires (Dependencies -> Center Node) */}
+            {validDeps.map((dep, idx) => {
+              const yS = L === 1 ? yCenter : 28 + idx * ((svgH - 56) / Math.max(L - 1, 1));
+              const isHovered = hoveredDepId === dep.id;
+              const depColor = getDependencyColor(dep, checkedCards, entries);
+              const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+              
+              const todayStr = new Date().toISOString().slice(0, 10);
+              const isInsideRange = !!dep.datestart && todayStr >= dep.datestart && (!dep.dateend || todayStr <= dep.dateend);
+              const isAnimated = !isDone && (dep.source === 'item' || dep.source === 'cert') && isInsideRange;
 
-        {/* Modifiers List */}
-        <div className="bg-black/30 border border-[#a3761a]/25 rounded-lg p-4 font-sans">
-          <h4 className="text-xs font-black uppercase text-slate-200 tracking-wider mb-2.5 flex items-center gap-2 border-b border-[#a3761a]/15 pb-1">
-            <span>Modifiers</span>
-          </h4>
-          <div className="space-y-2 text-xs text-slate-350 font-medium">
-            <div className="flex items-center gap-2">
-              <span className="text-[#e4ae39]">💫</span>
-              <span><strong>Animation:</strong> Custom Orb combinations {entry.skill ? `(${entry.skill.toUpperCase()})` : ''}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[#e4ae39]">✨</span>
-              <span><strong>Ambient Effects:</strong> Gold highlight ring and soft HUD hover dimming</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[#e4ae39]">☄️</span>
-              <span><strong>Custom Effects:</strong> Connected dependency network paths glow matching active combo orbs</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[#e4ae39]">🔊</span>
-              <span><strong>Sound:</strong> Arsenal Magus custom mastery fanfare active on complete toggle</span>
-            </div>
-          </div>
-        </div>
+              const pathD = `M ${xLeft} ${yS} C ${xLeft + dx} ${yS}, ${xCenter - dx} ${yCenter}, ${xCenter} ${yCenter}`;
+              return (
+                <path
+                  key={`wire-left-${dep.id}`}
+                  d={pathD}
+                  fill="none"
+                  stroke={depColor}
+                  strokeWidth={isHovered ? 2.5 : 1.2}
+                  className={`transition-all duration-350 ease-out ${isAnimated ? 'animate-pathway-flow' : ''}`}
+                  opacity={isHovered ? 1.0 : 0.45}
+                />
+              );
+            })}
 
-        {/* Flavor Text */}
-        <div className="text-xs italic text-slate-500 font-serif border-l-2 border-[#a3761a]/30 pl-3 leading-relaxed py-0.5">
-          "A testament of absolute focus, completed with master-class precision under the vigilant eyes of the Arsenal Magus."
-        </div>
+            {/* 2. Right Wires (Center Node -> Dependents) */}
+            {validDependents.map((dep, idx) => {
+              const yE = R === 1 ? yCenter : 28 + idx * ((svgH - 56) / Math.max(R - 1, 1));
+              const isHovered = hoveredDepId === dep.id;
+              const depColor = getDependencyColor(dep, checkedCards, entries);
+              const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
 
-        {/* Bottom marketability banners */}
-        <div className="border border-[#a3761a]/20 rounded overflow-hidden mt-2">
-          <div className="bg-[#2d1717] px-3 py-1.5 text-[9px] font-black text-[#fca5a5] uppercase tracking-wider text-center border-b border-[#a3761a]/15">
-            COMPLETED: {entry.dateend || entry.datestart || 'N/A'}
-          </div>
-          <div className="bg-[#e4ae39] px-3 py-1.5 text-[10px] font-black text-slate-950 uppercase tracking-widest text-center font-sans">
-            LIMITED MARKETABILITY
-          </div>
+              const todayStr = new Date().toISOString().slice(0, 10);
+              const isInsideRange = !!dep.datestart && todayStr >= dep.datestart && (!dep.dateend || todayStr <= dep.dateend);
+              const isAnimated = !isDone && (dep.source === 'item' || dep.source === 'cert') && isInsideRange;
+
+              const pathD = `M ${xCenter} ${yCenter} C ${xCenter + dx} ${yCenter}, ${xRight - dx} ${yE}, ${xRight} ${yE}`;
+              return (
+                <path
+                  key={`wire-right-${dep.id}`}
+                  d={pathD}
+                  fill="none"
+                  stroke={depColor}
+                  strokeWidth={isHovered ? 2.5 : 1.2}
+                  className={`transition-all duration-350 ease-out ${isAnimated ? 'animate-pathway-flow' : ''}`}
+                  opacity={isHovered ? 1.0 : 0.45}
+                />
+              );
+            })}
+
+            {/* 3. Draw Left Nodes (Dependencies) */}
+            {validDeps.map((dep, idx) => {
+              const y = L === 1 ? yCenter : 28 + idx * ((svgH - 56) / Math.max(L - 1, 1));
+              const depColor = getDependencyColor(dep, checkedCards, entries);
+              const isHovered = hoveredDepId === dep.id;
+              const label = dep.title.length > 18 ? dep.title.slice(0, 17) + '…' : dep.title;
+
+              return (
+                <g
+                  key={`node-left-${dep.id}`}
+                  className="cursor-pointer group"
+                  onMouseEnter={() => setHoveredDepId(dep.id)}
+                  onMouseLeave={() => setHoveredDepId(null)}
+                  onClick={() => navigateToEntry(dep, 'click')}
+                >
+                  <circle cx={xLeft} cy={y} r={isHovered ? 12 : 0} fill={depColor} opacity={0.25} className="transition-all duration-200" />
+                  <circle cx={xLeft} cy={y} r={7} fill={depColor} stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"} strokeWidth={1.5} className="transition-all duration-200" />
+                  <text x={xLeft - 14} y={y + 3.5} fontSize={9} fill={isHovered ? '#e2e8f0' : '#64748b'} fontFamily="ui-monospace, monospace" fontWeight={isHovered ? 700 : 500} textAnchor="end" className="transition-all duration-200 pointer-events-none select-none">{label}</text>
+                </g>
+              );
+            })}
+
+            {/* 4. Draw Right Nodes (Dependents) */}
+            {validDependents.map((dep, idx) => {
+              const y = R === 1 ? yCenter : 28 + idx * ((svgH - 56) / Math.max(R - 1, 1));
+              const depColor = getDependencyColor(dep, checkedCards, entries);
+              const isHovered = hoveredDepId === dep.id;
+              const label = dep.title.length > 18 ? dep.title.slice(0, 17) + '…' : dep.title;
+
+              return (
+                <g
+                  key={`node-right-${dep.id}`}
+                  className="cursor-pointer group"
+                  onMouseEnter={() => setHoveredDepId(dep.id)}
+                  onMouseLeave={() => setHoveredDepId(null)}
+                  onClick={() => navigateToEntry(dep, 'click')}
+                >
+                  <circle cx={xRight} cy={y} r={isHovered ? 12 : 0} fill={depColor} opacity={0.25} className="transition-all duration-200" />
+                  <circle cx={xRight} cy={y} r={7} fill={depColor} stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"} strokeWidth={1.5} className="transition-all duration-200" />
+                  <text x={xRight + 14} y={y + 3.5} fontSize={9} fill={isHovered ? '#e2e8f0' : '#64748b'} fontFamily="ui-monospace, monospace" fontWeight={isHovered ? 700 : 500} textAnchor="start" className="transition-all duration-200 pointer-events-none select-none">{label}</text>
+                </g>
+              );
+            })}
+
+            {/* 5. Draw Center Node (Current Card) */}
+            {(() => {
+              const currentColor = getDependencyColor(selectedEntry, checkedCards, entries);
+              const label = selectedEntry.title.length > 16 ? selectedEntry.title.slice(0, 15) + '…' : selectedEntry.title;
+              return (
+                <g className="cursor-default">
+                  <circle cx={xCenter} cy={yCenter} r={16} fill={currentColor} opacity={0.15} />
+                  <circle cx={xCenter} cy={yCenter} r={10} fill={currentColor} stroke="rgba(0,0,0,0.6)" strokeWidth={2} />
+                  <circle cx={xCenter} cy={yCenter} r={3} fill="#fff" />
+                  <text x={xCenter} y={yCenter + 22} fontSize={9} fill="#cbd5e1" fontFamily="ui-monospace, monospace" fontWeight={700} textAnchor="middle" className="pointer-events-none select-none">{label}</text>
+                </g>
+              );
+            })()}
+          </svg>
         </div>
       </div>
     );
   };
+
+
 
   const openAddModal = () => {
     setEditEntry(null);
@@ -1315,6 +1476,8 @@ export const App: React.FC = () => {
             setDreamingIncludePast={setDreamingIncludePast}
             reverseTimeline={reverseTimeline}
             setReverseTimeline={setReverseTimeline}
+            showOrbs={showOrbs}
+            setShowOrbs={setShowOrbs}
             entriesForStats={entriesForComboCounts}
             onSelectCombo={handleSelectCombo}
             shownCount={isDreamingOpen && readViewMode === 'split' ? upcomingEntries.length : filteredEntries.length}
@@ -1374,6 +1537,7 @@ export const App: React.FC = () => {
                   isSplitView={readViewMode === 'split' && !!selectedEntry}
                   selectedEntryId={selectedEntry?.id}
                   onDeselect={handleCloseModal}
+                  showOrbs={showOrbs}
                 />
               )}
             </div>
@@ -1409,14 +1573,36 @@ export const App: React.FC = () => {
                 const currentIdx = filteredEntries.findIndex(e => e.id === selectedEntry.id);
                 const hasPrev = currentIdx > 0;
                 const hasNext = currentIdx < filteredEntries.length - 1;
-                const depIds = selectedEntry.dependencies || [];
-                const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
                 const isDoneAchievement = selectedEntry.source === 'achv' && (checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false));
+                
+                const dependentsCount = entries.filter(e => e.dependencies?.includes(selectedEntry.id)).length;
+                const isDependency = dependentsCount > 0;
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const isInsideRange = !!selectedEntry.datestart && todayStr >= selectedEntry.datestart && (!selectedEntry.dateend || todayStr <= selectedEntry.dateend);
+                const isChecked = checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false);
+                const showAnimatedBorder = selectedEntry.source === 'item' && isDependency && !isChecked && isInsideRange;
+
                 return (
                   <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'} pb-20`}>
                     <div className={`flex flex-col shadow-2xl overflow-hidden h-full relative detail-panel-no-hover ${
                       getDetailPanelBorderClasses(selectedEntry, checkedCards, entries)
                     }`}>
+                      {showAnimatedBorder && (
+                        <div className="absolute pointer-events-none rounded-lg z-20" style={{ top: -3, left: -3, right: -3, bottom: -3 }}>
+                          <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
+                            <rect
+                              x="1.5"
+                              y="1.5"
+                              style={{ width: 'calc(100% - 3px)', height: 'calc(100% - 3px)' }}
+                              rx="8"
+                              fill="none"
+                              stroke="#8154c0"
+                              strokeWidth="3"
+                              className="animate-border-flow"
+                            />
+                          </svg>
+                        </div>
+                      )}
                       {isDoneAchievement && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
                       {/* Split Panel Header */}
                       <div className={`p-4 border-b flex items-start justify-between gap-3 shrink-0 ${
@@ -1497,65 +1683,7 @@ export const App: React.FC = () => {
 
                       {/* Body */}
                       <div className="flex-1 overflow-y-auto p-5 prose prose-invert max-w-none text-slate-300 text-sm">
-                        {validDeps.length > 0 && (
-                          <div className="mb-5 p-3 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
-                            <div 
-                              onClick={() => {
-                                if (soundEnabled) sfx.playTick();
-                                setIsSplitNetworkExpanded(!isSplitNetworkExpanded);
-                              }}
-                              className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between cursor-pointer hover:text-slate-350 select-none"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                {isSplitNetworkExpanded ? <ChevronDown size={12} className="text-slate-400" /> : <ChevronRight size={12} className="text-slate-400" />}
-                                <span>Connection Network</span>
-                              </div>
-                              <span className="text-[9px] text-slate-600 font-medium normal-case">Hover • Click to navigate</span>
-                            </div>
-                            
-                            {isSplitNetworkExpanded && (
-                              <div className="relative w-full mt-3 animate-fadeIn" style={{ height: `${Math.max(80, validDeps.length * 32 + 32)}px` }}>
-                                <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(80, validDeps.length * 32 + 32)}`} preserveAspectRatio="xMidYMid meet">
-                                  {validDeps.map((dep, idx) => {
-                                    const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                    const yS = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
-                                    const yE = svgH / 2; const dx2 = (370 - 50) / 2;
-                                    const isH = hoveredDepId === dep.id;
-                                    const c = getDependencyColor(dep, checkedCards);
-                                    return <path key={dep.id} d={`M 50 ${yS} C ${50 + dx2} ${yS}, ${370 - dx2} ${yE}, 370 ${yE}`} fill="none" stroke={isH ? c : 'rgba(148,163,184,0.18)'} strokeWidth={isH ? 2.5 : 1.2} className="transition-all duration-200" />;
-                                  })}
-                                  {validDeps.map((dep, idx) => {
-                                    const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                    const y = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
-                                    const isH = hoveredDepId === dep.id;
-                                    const c = getDependencyColor(dep, checkedCards);
-                                    const lbl = dep.title.length > 20 ? dep.title.slice(0, 19) + '…' : dep.title;
-                                    return (
-                                      <g key={dep.id} className="cursor-pointer" onMouseEnter={() => setHoveredDepId(dep.id)} onMouseLeave={() => setHoveredDepId(null)} onClick={() => navigateToEntry(dep, 'click')}>
-                                        <circle cx={50} cy={y} r={isH ? 12 : 0} fill={c} opacity={0.25} className="transition-all duration-200" />
-                                        <circle cx={50} cy={y} r={7} fill={c} stroke={isH ? '#fff' : 'rgba(0,0,0,0.5)'} strokeWidth={1.5} className="transition-all duration-200" />
-                                        <text x={64} y={y + 4} fontSize={9} fill={isH ? '#e2e8f0' : '#64748b'} fontFamily="ui-monospace,monospace" fontWeight={isH ? 700 : 500} className="pointer-events-none select-none">{lbl}</text>
-                                      </g>
-                                    );
-                                  })}
-                                  {(() => {
-                                    const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                    const y = svgH / 2; const c = getDependencyColor(selectedEntry, checkedCards);
-                                    const lbl = selectedEntry.title.length > 12 ? selectedEntry.title.slice(0, 11) + '…' : selectedEntry.title;
-                                    return (
-                                      <g>
-                                        <circle cx={370} cy={y} r={16} fill={c} opacity={0.15} />
-                                        <circle cx={370} cy={y} r={10} fill={c} stroke="rgba(0,0,0,0.6)" strokeWidth={2} />
-                                        <circle cx={370} cy={y} r={3} fill="#fff" />
-                                        <text x={386} y={y + 4} fontSize={9} fill="#cbd5e1" fontFamily="ui-monospace,monospace" fontWeight={700} className="pointer-events-none select-none">{lbl}</text>
-                                      </g>
-                                    );
-                                  })()}
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        {renderTwoSidedNetwork(selectedEntry)}
                         {selectedEntry.imgPath && (
                           selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
                             <div className="w-full h-[300px] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-4">
@@ -1576,7 +1704,7 @@ export const App: React.FC = () => {
                           <p className="text-xs italic text-slate-400 flex items-center gap-1"><Info size={14} /><span>No archive description provided.</span></p>
                         )}
 
-                        {isDoneAchievement && renderImmortalSection(selectedEntry)}
+
                       </div>
 
                       {/* Footer */}
@@ -1608,17 +1736,40 @@ export const App: React.FC = () => {
         </section>
       </main>
 
-      {/* Details Markdown Modal (Popup mode only) */}
       {selectedEntry && readViewMode === 'popup' && (() => {
         const currentIdx = filteredEntries.findIndex(e => e.id === selectedEntry.id);
         const hasPrev = currentIdx > 0;
         const hasNext = currentIdx < filteredEntries.length - 1;
         const isDoneAchievement = selectedEntry.source === 'achv' && (checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false));
+        
+        const dependentsCount = entries.filter(e => e.dependencies?.includes(selectedEntry.id)).length;
+        const isDependency = dependentsCount > 0;
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const isInsideRange = !!selectedEntry.datestart && todayStr >= selectedEntry.datestart && (!selectedEntry.dateend || todayStr <= selectedEntry.dateend);
+        const isChecked = checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false);
+        const showAnimatedBorder = selectedEntry.source === 'item' && isDependency && !isChecked && isInsideRange;
+
         return (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
             <div className={`max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative detail-panel-no-hover ${
               getDetailPanelBorderClasses(selectedEntry, checkedCards, entries)
             }`}>
+              {showAnimatedBorder && (
+                <div className="absolute pointer-events-none rounded-lg z-20" style={{ top: -3, left: -3, right: -3, bottom: -3 }}>
+                  <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
+                    <rect
+                      x="1.5"
+                      y="1.5"
+                      style={{ width: 'calc(100% - 3px)', height: 'calc(100% - 3px)' }}
+                      rx="8"
+                      fill="none"
+                      stroke="#8154c0"
+                      strokeWidth="3"
+                      className="animate-border-flow"
+                    />
+                  </svg>
+                </div>
+              )}
               {isDoneAchievement && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
               {/* Modal Header */}
               <div className={`p-4 border-b flex justify-between items-center ${
@@ -1699,170 +1850,8 @@ export const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Modal Body / Markdown Content */}
               <div className="flex-1 overflow-y-auto p-6 prose prose-invert max-w-none text-slate-300">
-                {(() => {
-                  const depIds = selectedEntry.dependencies || [];
-                  const validDeps = depIds
-                    .map(id => entries.find(e => e.id === id))
-                    .filter((e): e is PortfolioEntry => !!e);
-
-                  if (validDeps.length === 0) return null;
-
-                  return (
-                    <div className="mb-6 p-4 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
-                      <div 
-                        onClick={() => {
-                          if (soundEnabled) sfx.playTick();
-                          setIsModalNetworkExpanded(!isModalNetworkExpanded);
-                        }}
-                        className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between cursor-pointer hover:text-slate-350 select-none"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {isModalNetworkExpanded ? <ChevronDown size={12} className="text-slate-400" /> : <ChevronRight size={12} className="text-slate-400" />}
-                          <span>Connection Network</span>
-                        </div>
-                        <span className="text-[9px] text-slate-650 font-medium normal-case">Hover to identify • Click to navigate</span>
-                      </div>
-                      {isModalNetworkExpanded && (
-                        <div className="relative w-full mt-3 animate-fadeIn" style={{ height: `${Math.max(100, validDeps.length * 36 + 40)}px` }}>
-                          <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(100, validDeps.length * 36 + 40)}`} preserveAspectRatio="xMidYMid meet">
-                            {/* Draw Wires */}
-                            {validDeps.map((dep, idx) => {
-                              const N = validDeps.length;
-                              const svgH = Math.max(100, N * 36 + 40);
-                              const yStart = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
-                              const yEnd = svgH / 2;
-                              const xStart = 50;
-                              const xEnd = 370;
-                              const dx = (xEnd - xStart) / 2;
-                              const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
-                              const isHovered = hoveredDepId === dep.id;
-                              const depColor = getDependencyColor(dep, checkedCards);
-
-                              const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
-                              const isAnimated = !isDone && (dep.source === 'item' || dep.source === 'cert');
-
-                              return (
-                                <path
-                                  key={`wire-${dep.id}`}
-                                  d={pathD}
-                                  fill="none"
-                                  stroke={depColor}
-                                  strokeWidth={isHovered ? 2.5 : 1.2}
-                                  className={`transition-all duration-350 ease-out ${isAnimated ? 'animate-pathway-flow' : ''}`}
-                                  opacity={isHovered ? 1.0 : 0.45}
-                                />
-                              );
-                            })}
-
-                            {/* Draw Left Nodes (Dependencies) */}
-                            {validDeps.map((dep, idx) => {
-                              const N = validDeps.length;
-                              const svgH = Math.max(100, N * 36 + 40);
-                              const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
-                              const x = 50;
-                              const depColor = getDependencyColor(dep, checkedCards);
-                              const isHovered = hoveredDepId === dep.id;
-                              // Truncate title to ~22 chars for the label
-                              const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
-
-                              return (
-                                <g
-                                  key={`node-dep-${dep.id}`}
-                                  className="cursor-pointer group"
-                                  onMouseEnter={() => setHoveredDepId(dep.id)}
-                                  onMouseLeave={() => setHoveredDepId(null)}
-                                  onClick={() => navigateToEntry(dep, 'click')}>
-                                  {/* Outer Glow on Hover */}
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={isHovered ? 12 : 0}
-                                    fill={depColor}
-                                    opacity={0.25}
-                                    className="transition-all duration-200"
-                                  />
-                                  {/* Inner Circle */}
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={7}
-                                    fill={depColor}
-                                    stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"}
-                                    strokeWidth={1.5}
-                                    className="transition-all duration-200"
-                                  />
-                                  {/* Label to the right of the node */}
-                                  <text
-                                    x={x + 14}
-                                    y={y + 4}
-                                    fontSize={10}
-                                    fill={isHovered ? '#e2e8f0' : '#64748b'}
-                                    fontFamily="ui-monospace, monospace"
-                                    fontWeight={isHovered ? 700 : 500}
-                                    className="transition-all duration-200 pointer-events-none select-none"
-                                  >
-                                    {label}
-                                  </text>
-                                </g>
-                              );
-                            })}
-
-                            {/* Draw Right Node (Current Card) */}
-                            {(() => {
-                              const N = validDeps.length;
-                              const svgH = Math.max(100, N * 36 + 40);
-                              const x = 370;
-                              const y = svgH / 2;
-                              const currentColor = getDependencyColor(selectedEntry, checkedCards);
-                              const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
-                              return (
-                                <g className="cursor-default">
-                                  {/* Glow */}
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={16}
-                                    fill={currentColor}
-                                    opacity={0.15}
-                                  />
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={10}
-                                    fill={currentColor}
-                                    stroke="rgba(0,0,0,0.6)"
-                                    strokeWidth={2}
-                                  />
-                                  {/* Central dot */}
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={3}
-                                    fill="#ffffff"
-                                  />
-                                  {/* Label to the right of the current node */}
-                                  <text
-                                    x={x + 16}
-                                    y={y + 4}
-                                    fontSize={10}
-                                    fill="#cbd5e1"
-                                    fontFamily="ui-monospace, monospace"
-                                    fontWeight={700}
-                                    className="pointer-events-none select-none"
-                                  >
-                                    {label}
-                                  </text>
-                                </g>
-                              );
-                            })()}
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {renderTwoSidedNetwork(selectedEntry)}
 
                 {selectedEntry.imgPath && (
                   selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
@@ -1915,7 +1904,7 @@ export const App: React.FC = () => {
                   </p>
                 )}
 
-                {isDoneAchievement && renderImmortalSection(selectedEntry)}
+
               </div>
 
               {/* Modal Footer */}
@@ -2167,15 +2156,14 @@ export const App: React.FC = () => {
                                       : 'text-slate-400 bg-slate-900/60 border-slate-800/80'
                                   }`}>
                                     {isOverdue && <span className="mr-1 opacity-70">⏳</span>}
-                                    {formatDate(entry.datestart)}
+                                    {entry.dateend 
+                                      ? `${getRelativeDateString(entry.datestart)} - ${getRelativeDateString(entry.dateend)}`
+                                      : getRelativeDateString(entry.datestart)
+                                    }
                                   </span>
 
-                                  {/* Flippable Card Container — glowing border if overdue undone */}
-                                  <div className={`w-full rounded-xl transition-all ${
-                                    isOverdue
-                                      ? 'ring-1 ring-orange-900/60 shadow-[0_0_14px_rgba(180,80,30,0.22)]'
-                                      : ''
-                                  }`}>
+                                  {/* Flippable Card Container */}
+                                  <div className="w-full rounded-xl transition-all">
                                     <FlippableCard
                                       key={`dream_flip_${entry.id}`}
                                       isRevealed={isRevealed}
